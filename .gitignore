@@ -1,0 +1,16 @@
+# Bỏ qua thư viện của Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Bỏ qua các file build production
+dist/
+build/
+
+# Bỏ qua file chứa biến môi trường (Bảo mật database, API key)
+.env
+.env.local
+
+# Bỏ qua các file rác của hệ điều hành
+.DS_Store
+Thumbs.db
