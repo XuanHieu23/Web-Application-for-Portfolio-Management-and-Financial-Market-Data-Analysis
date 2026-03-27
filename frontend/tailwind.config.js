@@ -1,9 +1,19 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [],
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}", // Dòng này cực kỳ quan trọng để Tailwind quét class
+  ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        'neon-bg': '#0B0E14', 
+        'neon-panel': 'rgba(21, 25, 36, 0.6)', 
+        'neon-cyan': '#00F0FF', 
+        'neon-green': '#00FF9D', 
+        'neon-red': '#FF3366', 
+      }
+    },
   },
   plugins: [],
 }
-
