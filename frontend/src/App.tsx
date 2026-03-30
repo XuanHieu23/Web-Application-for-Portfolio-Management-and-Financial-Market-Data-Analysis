@@ -1,21 +1,24 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter,Routes, Route } from 'react-router-dom';
 import { MainLayout } from './component/layout/MainLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
+import { Portfolio } from './pages/Portfolio';
+import { ProtectedRoute } from './route/ProtectedRoute';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Route không cần đăng nhập */}
+      {/* Trang Login thì ai cũng vào được */}
         <Route path="/login" element={<Login />} />
-        
-        {/* Route chính (Được bọc trong Layout có Sidebar/Header) */}
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<Dashboard />} />
-          {/* Tuần sau chúng ta sẽ thêm các route khác vào đây */}
-          <Route path="portfolio" element={<div className="text-white p-4">Portfolio Page (Coming Soon)</div>} />
-          <Route path="news" element={<div className="text-white p-4">AI News Page (Coming Soon)</div>} />
+
+      {/* Những trang bên trong phải đi qua ProtectedRoute */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/portfolio" element={<Portfolio />} />
+          {/* Các route khác sau này cứ nhét vào đây... */}
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

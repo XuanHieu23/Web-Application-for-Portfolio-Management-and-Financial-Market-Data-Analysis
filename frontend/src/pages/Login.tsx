@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationBanner } from '../component/ui/NotificationBanner';
+import { authApi } from '../api/authApi';
 
 export const Login: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,36 +18,33 @@ export const Login: React.FC = () => {
     setNotify({ message, type });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
-    const payload = isLogin ? { email, password } : { username, email, password };
 
     try {
-      const response = await fetch(`http://localhost:5000${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        if (isLogin) {
-          showNotification('Đăng nhập thành công!', 'success');
-          localStorage.setItem('token', data.token);
-          setTimeout(() => navigate('/'), 1000); // Đợi 1s cho thông báo hiển thị rồi mới chuyển trang
-        } else {
-          showNotification('Đăng ký thành công! Vui lòng đăng nhập lại.', 'success');
-          setIsLogin(true);
-          setPassword('');
-        }
+      if (isLogin) {
+        // GỌI API ĐĂNG NHẬP QUA FOLDER API
+        const data = await authApi.login({ email, password });
+        
+        showNotification('Đăng nhập thành công!', 'success');
+        localStorage.setItem('token', data.token); // Lưu token
+        setTimeout(() => navigate('/'), 1000); // Đẩy về trang chủ
+        
       } else {
-        showNotification(data.message || 'Có lỗi xảy ra', 'error');
+        // GỌI API ĐĂNG KÝ QUA FOLDER API
+        await authApi.signup({ username, email, password });
+        
+        showNotification('Đăng ký thành công! Vui lòng đăng nhập lại.', 'success');
+        setIsLogin(true); // Trượt về form Đăng nhập
+        setPassword('');
       }
-    } catch (error) {
-      console.error('Lỗi kết nối Server', error);
-      showNotification('Không thể kết nối tới Server. Vui lòng thử lại sau!', 'error');
+    } catch (error: any) {
+      console.error('Lỗi Auth:', error);
+      
+      // Axios thông minh hơn fetch, nó tự bóc tách lỗi từ Backend trả về
+      // Lấy câu thông báo lỗi từ Backend (nếu có), không thì báo lỗi chung chung
+      const errorMsg = error.response?.data?.message || 'Không thể kết nối tới Server. Vui lòng thử lại!';
+      showNotification(errorMsg, 'error');
     }
   };
 

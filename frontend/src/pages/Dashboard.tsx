@@ -1,48 +1,74 @@
-import React from 'react';
-import { CandlestickChart } from '../component/ui/CandlestickChart';
-import { TrendingUp, Activity, BarChart3, ShieldAlert } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { portfolioApi } from '../api/portfolioApi';
 
 export const Dashboard: React.FC = () => {
-  // Dữ liệu giả lập cho 4 thẻ (mock data)
-  const marketStats = [
-    { title: 'Total Market Cap', value: '$2.51T', change: '+2.7%', isUp: true, icon: BarChart3 },
-    { title: '24h Volume', value: '$127.4B', change: '+15.8%', isUp: true, icon: Activity },
-    { title: 'BTC Dominance', value: '52.4%', change: '+0.0%', isUp: true, icon: TrendingUp },
-    { title: 'Fear & Greed', value: '68 (Greed)', change: '~+3.1%', isUp: true, icon: ShieldAlert },
-  ];
+  const [totalBalance, setTotalBalance] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Lấy dữ liệu ví thật từ Backend
+        const portfolioData = await portfolioApi.getPortfolio();
+        
+        // Tính tổng tài sản: Tổng cộng (Số lượng * Giá vốn) của tất cả các đồng coin
+        const calculatedTotal = portfolioData.reduce((acc: number, item: any) => {
+          return acc + (item.quantity * item.avgPurchasePrice);
+        }, 0);
+
+        setTotalBalance(calculatedTotal);
+      } catch (error) {
+        console.error('Lỗi khi tải Dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* 4 Thẻ Chỉ số */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {marketStats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div key={index} className="bg-neon-panel backdrop-blur-md border border-gray-800 rounded-xl p-5 hover:border-gray-600 transition-colors">
-              <div className="flex justify-between items-start mb-4">
-                <Icon className="text-neon-cyan" size={20} />
-                <span className={`text-sm font-medium ${stat.isUp ? 'text-neon-green' : 'text-neon-red'}`}>
-                  {stat.change}
-                </span>
-              </div>
-              <h3 className="text-gray-400 text-sm mb-1">{stat.title}</h3>
-              <p className="text-white text-2xl font-bold tracking-wide">{stat.value}</p>
-            </div>
-          );
-        })}
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-white mb-8">Dashboard Overview</h1>
+
+      {/* Bốn thẻ chỉ số */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Thẻ 1: TỔNG TÀI SẢN (Dữ liệu thật) */}
+        <div className="bg-neon-panel border border-gray-800 rounded-2xl p-6 shadow-lg relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/5 rounded-full blur-3xl group-hover:bg-neon-cyan/10 transition-colors"></div>
+          <p className="text-gray-400 text-sm mb-2">Total Balance (Est.)</p>
+          {loading ? (
+             <div className="h-10 w-32 bg-gray-800 animate-pulse rounded"></div>
+          ) : (
+             <h2 className="text-4xl font-bold text-white">
+               ${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+             </h2>
+          )}
+          <div className="mt-4 flex items-center text-neon-green text-sm font-medium">
+            <span>+0.00% (24h)</span> {/* Tạm để tĩnh vì chưa có API giá thị trường */}
+          </div>
+        </div>
+
+        {/* Các thẻ Mock khác (Sẽ làm thật ở các tuần sau khi tích hợp API Giá Coin) */}
+        <div className="bg-neon-panel border border-gray-800 rounded-2xl p-6 shadow-lg">
+          <p className="text-gray-400 text-sm mb-2">24h Profit/Loss</p>
+          <h2 className="text-2xl font-bold text-neon-green">+$0.00</h2>
+        </div>
+        
+        <div className="bg-neon-panel border border-gray-800 rounded-2xl p-6 shadow-lg">
+          <p className="text-gray-400 text-sm mb-2">Active Assets</p>
+          <h2 className="text-2xl font-bold text-white">--</h2>
+        </div>
+
+        <div className="bg-neon-panel border border-gray-800 rounded-2xl p-6 shadow-lg">
+          <p className="text-gray-400 text-sm mb-2">Market Trend</p>
+          <h2 className="text-2xl font-bold text-yellow-400">Neutral</h2>
+        </div>
       </div>
 
-      {/* Biểu đồ trung tâm */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
-          <CandlestickChart />
-        </div>
-        <div className="bg-neon-panel backdrop-blur-md border border-gray-800 rounded-xl p-5">
-           <h3 className="text-white font-semibold mb-4">Live Order Book (Sắp ra mắt)</h3>
-           <div className="flex items-center justify-center h-64 text-gray-500 text-sm border border-dashed border-gray-700 rounded-lg">
-             Đang chờ kết nối WebSocket...
-           </div>
-        </div>
+      {/* Phần Chart và Lịch sử giao dịch sẽ được đồng bộ tiếp ở Tuần 3 */}
+      <div className="mt-8 bg-neon-panel border border-gray-800 rounded-2xl p-6 h-96 flex items-center justify-center">
+        <p className="text-gray-500">Market Chart will be integrated here</p>
       </div>
     </div>
   );

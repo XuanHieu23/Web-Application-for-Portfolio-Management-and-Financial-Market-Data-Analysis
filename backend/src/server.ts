@@ -2,8 +2,8 @@ import express, { Application, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth.route'; // THÊM DÒNG NÀY (Nhớ kiểm tra tên file route của bạn là auth.route.ts hay auth.routes.ts để import cho đúng)
-
+import authRoutes from './routes/auth.routes'; // THÊM DÒNG NÀY (Nhớ kiểm tra tên file route của bạn là auth.route.ts hay auth.routes.ts để import cho đúng)
+import portfolioRoutes from './routes/portfolio.routes';
 // Cấu hình để đọc file .env
 dotenv.config();
 
@@ -16,6 +16,7 @@ app.use(express.json()); // Cho phép server đọc dữ liệu JSON từ reques
 
 // Khai báo các API Routes
 app.use('/api/auth', authRoutes); // THÊM DÒNG NÀY: Gắn toàn bộ auth routes vào tiền tố /api/auth
+app.use('/api/portfolio', portfolioRoutes);
 
 // Kết nối MongoDB
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/financial_dashboard';
