@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType } from 'lightweight-charts';
+import { createChart, ColorType, type Time } from 'lightweight-charts';
 
 export const CandlestickChart: React.FC = () => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -7,56 +7,68 @@ export const CandlestickChart: React.FC = () => {
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Khởi tạo biểu đồ với màu sắc chuẩn Figma
+    // 1. Khởi tạo biểu đồ với tính năng autoSize (tự co giãn không cần code tay)
     const chart = createChart(chartContainerRef.current, {
+      autoSize: true, 
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#A0AEC0',
+        textColor: '#9ca3af',
       },
       grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-        horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+        vertLines: { color: 'rgba(31, 41, 55, 0.5)' },
+        horzLines: { color: 'rgba(31, 41, 55, 0.5)' },
       },
-      width: chartContainerRef.current.clientWidth,
-      height: 400,
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+      },
     });
 
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#00FF9D', 
-      downColor: '#FF3366', 
+      upColor: '#00ffcc',
+      downColor: '#ff0055',
       borderVisible: false,
-      wickUpColor: '#00FF9D',
-      wickDownColor: '#FF3366',
+      wickUpColor: '#00ffcc',
+      wickDownColor: '#ff0055',
     });
-    
-    // Bơm Data giả (Mock data)
-    candlestickSeries.setData([
-      { time: '2026-03-01', open: 65000, high: 66000, low: 64000, close: 65500 },
-      { time: '2026-03-02', open: 65500, high: 67000, low: 65000, close: 66800 },
-      { time: '2026-03-03', open: 66800, high: 68000, low: 66000, close: 67500 },
-      { time: '2026-03-04', open: 67500, high: 67800, low: 65500, close: 66000 },
-      { time: '2026-03-05', open: 66000, high: 67500, low: 65800, close: 67200 },
-    ]);
 
-    chart.timeScale().fitContent();
+    let isMounted = true;
 
-    // Responsive khi resize trình duyệt
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-      }
-    };
-    window.addEventListener('resize', handleResize);
+    // 2. SỬA TRIỆT ĐỂ Ở ĐÂY: Dùng data-api.binance.vision chống chặn mạng
+    fetch('https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=100')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return;
+
+        // In ra Console để chắc chắn 100% dữ liệu đã về tới nhà
+        console.log("Dữ liệu nến đã về:", data);
+
+        const formattedData = data.map((d: any) => ({
+          time: Math.floor(d[0] / 1000) as Time,
+          open: parseFloat(d[1]),
+          high: parseFloat(d[2]),
+          low: parseFloat(d[3]),
+          close: parseFloat(d[4]),
+        }));
+        
+        candlestickSeries.setData(formattedData);
+        chart.timeScale().fitContent(); 
+      })
+      .catch(err => console.error('Lỗi mạng không tải được nến:', err));
 
     return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
+      isMounted = false;
+      chart.remove(); // Dọn dẹp an toàn tuyệt đối
     };
   }, []);
 
   return (
-    <div className="p-4 rounded-xl bg-neon-panel backdrop-blur-md border border-gray-800">
-      <h2 className="text-white text-lg font-semibold mb-4">BTC/USDT Real-Time Chart (Mock)</h2>
+    <div className="w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-white">BTC/USDT - Market Chart</h3>
+        <span className="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded">Daily (1D)</span>
+      </div>
+      {/* Khung chứa phải có chiều cao tối thiểu thì nến mới có chỗ hiện ra */}
       <div ref={chartContainerRef} className="w-full h-[400px]" />
     </div>
   );
