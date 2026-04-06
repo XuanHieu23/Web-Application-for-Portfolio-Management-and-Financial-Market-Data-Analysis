@@ -1,16 +1,23 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { Navigate } from 'react-router-dom';
+// TODO: Import store quản lý Auth của bạn (Zustand) vào đây sau
+// import { useAuthStore } from '../store/authStore';
 
-export const ProtectedRoute: React.FC = () => {
-  // Lấy trạng thái đăng nhập từ kho Zustand
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+// 1. Khai báo rõ ràng là Component này sẽ nhận vào các component con (children)
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
 
-  // Nếu chưa đăng nhập -> Đá thẳng về trang /login
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  // 2. Tạm thời để true để bạn test giao diện. 
+  // Sau này làm logic Login xong, bạn sẽ lấy biến này từ Zustand (ví dụ: const isAuthenticated = useAuthStore(state => state.isAuthenticated))
+  const isAuthenticated = true; 
+
+  // Nếu chưa đăng nhập -> Đá văng ra trang /login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Nếu đã đăng nhập -> Cho phép đi tiếp vào các Component con (Dashboard, Portfolio...)
-  return <Outlet />;
+  // Nếu đã đăng nhập -> Hiển thị các Component con (chính là MainLayout)
+  return <>{children}</>;
 };

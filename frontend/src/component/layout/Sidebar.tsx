@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PieChart, Newspaper, Settings, Zap } from 'lucide-react';
+import { LayoutDashboard, PieChart, Newspaper, Settings, Zap, LineChart } from 'lucide-react';
 
 const menuItems = [
-  { name: 'Dashboard', icon: LayoutDashboard, href: '/' },
+  { name: 'Dashboard', icon: LayoutDashboard, href: '/home' },
   { name: 'Portfolio', icon: PieChart, href: '/portfolio' },
   { name: 'AI Insights', icon: Newspaper, href: '/news' },
+  { name: 'Markets', icon: LineChart, href: '/markets' },
 ];
 
 export const Sidebar: React.FC = () => {
@@ -13,7 +14,7 @@ export const Sidebar: React.FC = () => {
   const location = useLocation(); // Lấy đường dẫn hiện tại để check active
 
   const isActive = (href: string) => {
-    if (href === '/') return location.pathname === '/';
+    if (href === '/home') return location.pathname === '/home';
     return location.pathname.startsWith(href);
   };
 

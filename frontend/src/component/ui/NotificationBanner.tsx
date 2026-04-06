@@ -1,46 +1,36 @@
-import React, { useEffect } from 'react';
-import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+// frontend/src/component/ui/NotificationBanner.tsx
+import React from 'react';
+import { X, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface NotificationProps {
   message: string;
-  type: 'success' | 'error' | 'warning';
+  type: 'success' | 'error';
   onClose: () => void;
 }
 
 export const NotificationBanner: React.FC<NotificationProps> = ({ message, type, onClose }) => {
-  // Tự động đóng sau 3 giây
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [message, onClose]);
-
-  if (!message) return null;
-
-  const styles = {
-    success: 'bg-green-950/90 border-neon-green text-neon-green shadow-[0_0_15px_rgba(0,255,157,0.2)]',
-    error: 'bg-red-950/90 border-neon-red text-neon-red shadow-[0_0_15px_rgba(255,51,102,0.2)]',
-    warning: 'bg-yellow-950/90 border-yellow-400 text-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.2)]',
-  };
-
-  const icons = {
-    success: <CheckCircle size={20} />,
-    error: <XCircle size={20} />,
-    warning: <AlertCircle size={20} />,
-  };
+  const isSuccess = type === 'success';
 
   return (
-    <div className="fixed top-6 right-6 z-50 animate-bounce-in">
-      <div className={`flex items-center gap-3 px-5 py-4 rounded-xl border backdrop-blur-md transition-all ${styles[type]}`}>
-        {icons[type]}
-        <span className="font-medium text-sm tracking-wide">{message}</span>
-        <button onClick={onClose} className="ml-4 hover:opacity-70 transition-opacity">
-          <XCircle size={16} />
-        </button>
+    <div className={`
+      flex items-center gap-4 px-5 py-4 rounded-xl border backdrop-blur-xl shadow-2xl min-w-[320px]
+      ${isSuccess 
+        ? 'bg-green-950/40 border-neon-green/50 text-neon-green shadow-neon-green/10' 
+        : 'bg-red-950/40 border-neon-red/50 text-neon-red shadow-neon-red/10'
+      }
+    `}>
+      {isSuccess ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+      
+      <div className="flex-1">
+        <p className="text-xs font-bold tracking-widest uppercase mb-0.5">
+          {isSuccess ? 'System.Success' : 'System.Error'}
+        </p>
+        <p className="text-sm font-medium text-white/90">{message}</p>
       </div>
+
+      <button onClick={onClose} className="hover:opacity-70 transition-opacity">
+        <X size={18} />
+      </button>
     </div>
   );
 };

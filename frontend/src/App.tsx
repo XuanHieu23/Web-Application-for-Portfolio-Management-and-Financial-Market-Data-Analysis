@@ -1,28 +1,39 @@
-import { BrowserRouter,Routes, Route } from 'react-router-dom';
-import { MainLayout } from './component/layout/MainLayout';
-import { Dashboard } from './pages/Dashboard';
-import { Login } from './pages/Login';
-import { Portfolio } from './pages/Portfolio';
-import { ProtectedRoute } from './route/ProtectedRoute';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
-function App() {
+// Import các trang
+import { LandingPage } from './pages/LandingPage';
+import { Login } from './pages/Login';
+import { Dashboard } from './pages/Dashboard';
+import { Portfolio } from './pages/Portfolio';
+// 1. IMPORT TRANG MARKET VÀO ĐÂY (Lưu ý tên export là Markets)
+import { Markets } from './pages/Market'; 
+
+import { MainLayout } from './component/layout/MainLayout';
+import { ProtectedRoute } from './route/ProtectedRoute'; 
+
+const App: React.FC = () => {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
-      {/* Trang Login thì ai cũng vào được */}
+        {/* VÙNG CÔNG CỘNG */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
 
-      {/* Những trang bên trong phải đi qua ProtectedRoute */}
-        <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-          {/* Các route khác sau này cứ nhét vào đây... */}
-          </Route>
+        {/* VÙNG KÍN (Được bọc trong MainLayout) */}
+        <Route element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+        }>
+          <Route path="/home" element={<Dashboard />} />
+          <Route path="/portfolio" element={<Portfolio />} />
+          {/* 2. THÊM ROUTE CHO MARKET VÀO ĐÂY */}
+          <Route path="/markets" element={<Markets />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
-}
+};
 
 export default App;

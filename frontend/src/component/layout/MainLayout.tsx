@@ -1,19 +1,21 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Bell, Search } from 'lucide-react';
-import { Sidebar } from './Sidebar'; // Import Sidebar xịn xò vào
+import { Sidebar } from './Sidebar'; 
+import { MarketTicker } from '../ui/MarketTicker'; // Import Ticker
 
 export const MainLayout: React.FC = () => {
   return (
+    // Khung tổng: Chia 2 cột ngang (Sidebar & Main)
     <div className="flex h-screen bg-neon-bg text-white font-sans overflow-hidden">
       
-      {/* Gọi Component Sidebar độc lập ra đây */}
+      {/* Cột trái: Sidebar */}
       <Sidebar />
 
-      {/* Main Content Area */}
+      {/* Cột phải: Toàn bộ nội dung chính */}
       <main className="flex-1 flex flex-col relative overflow-hidden">
         
-        {/* Header - Đã dọn dẹp gọn gàng hơn */}
+        {/* Header - Giữ nguyên giao diện xịn xò của bạn */}
         <header className="h-16 border-b border-gray-800 bg-neon-panel/80 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-10 shrink-0">
           <div className="relative w-64 md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
@@ -39,10 +41,16 @@ export const MainLayout: React.FC = () => {
           </div>
         </header>
 
-        {/* Khung chứa các trang con (Dashboard, Portfolio...) */}
+        {/* --- DẢI BĂNG GIÁ ĐẶT NGAY DƯỚI HEADER --- */}
+        <div className="shrink-0 border-b border-gray-800">
+          <MarketTicker />
+        </div>
+
+        {/* Khung chứa các trang con cuộn được (Dashboard, Portfolio...) */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
           <Outlet />
         </div>
+
       </main>
     </div>
   );
