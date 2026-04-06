@@ -11,7 +11,7 @@ export const addTransaction = async (req: Request, res: Response): Promise<void>
     const { coinSymbol, type, quantity, price } = req.body;
 
     if (!coinSymbol || !type || !quantity || !price) {
-      res.status(400).json({ success: false, message: 'Vui lòng cung cấp đủ thông tin giao dịch!' });
+      res.status(400).json({ success: false, message: 'Please provide all required transaction details!' });
       return;
     }
 
@@ -49,7 +49,7 @@ export const addTransaction = async (req: Request, res: Response): Promise<void>
     } else if (type === 'SELL') {
       // Logic Bán: Kiểm tra xem có đủ coin để bán không
       if (!portfolioItem || portfolioItem.quantity < Number(quantity)) {
-        res.status(400).json({ success: false, message: 'Số dư tài sản không đủ để thực hiện lệnh BÁN!' });
+        res.status(400).json({ success: false, message: 'Insufficient balance to execute SELL order!' });
         return;
       }
       portfolioItem.quantity -= Number(quantity);
@@ -67,7 +67,7 @@ export const addTransaction = async (req: Request, res: Response): Promise<void>
     });
 
   } catch (error) {
-    console.error('Lỗi khi lưu giao dịch:', error);
+    console.error('Error saving transaction:', error);
     res.status(500).json({ success: false, message: 'Server error during transaction' });
   }
 };
@@ -87,7 +87,7 @@ export const getTransactions = async (req: Request, res: Response): Promise<void
       data: transactions 
     });
   } catch (error) {
-    console.error('Lỗi khi lấy lịch sử:', error);
+    console.error('Error fetching transaction history:', error);
     res.status(500).json({ success: false, message: 'Server error fetching history' });
   }
 };

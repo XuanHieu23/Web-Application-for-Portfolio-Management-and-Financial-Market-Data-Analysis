@@ -52,10 +52,10 @@ const io = new Server(server, {
 
 // Lắng nghe người dùng truy cập web
 io.on('connection', (socket) => {
-  console.log(`📡 Một Terminal Client vừa kết nối: ${socket.id}`);
+  console.log(`📡 A terminal client has connected: ${socket.id}`);
   
   socket.on('disconnect', () => {
-    console.log(`🔌 Client ngắt kết nối: ${socket.id}`);
+    console.log(`🔌 Client disconnected: ${socket.id}`);
   });
 });
 
@@ -74,7 +74,7 @@ mongoose
     
     // ĐÃ FIX: Chỉ mở cổng listen khi Database đã sẵn sàng!
     server.listen(PORT, () => {
-      console.log(`🚀 KINETIC Backend đang chạy tại port ${PORT}`);
+      console.log(`🚀 KINETIC Backend is running on port ${PORT}`);
     });
   })
   .catch((err) => {

@@ -1,4 +1,3 @@
-// frontend/src/component/ui/NotificationBanner.tsx
 import React from 'react';
 import { X, CheckCircle, AlertCircle } from 'lucide-react';
 

@@ -6,7 +6,7 @@ export const setupBinanceSocket = (io: SocketIOServer) => {
   const binanceWs = new WebSocket('wss://stream.binance.com:9443/ws/!miniTicker@arr');
 
   binanceWs.on('open', () => {
-    console.log('✅ Backend đã kết nối thành công với luồng dữ liệu Binance');
+    console.log('✅ Backend has connected successfully to Binance');
   });
 
   binanceWs.on('message', (data: string) => {
@@ -31,7 +31,7 @@ export const setupBinanceSocket = (io: SocketIOServer) => {
   });
 
   binanceWs.on('close', () => {
-    console.log('❌ Mất kết nối với Binance, đang thử kết nối lại...');
+    console.log('❌ Backend has lost connection with Binance, attempting to reconnect...');
     // Trong thực tế sẽ viết logic auto-reconnect ở đây
   });
 };
