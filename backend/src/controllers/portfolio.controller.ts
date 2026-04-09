@@ -1,93 +1,96 @@
 import { Response } from 'express';
 import Portfolio from '../models/portfolio.model';
 import Transaction from '../models/transaction.model';
-import { AuthRequest } from '../middlewares/auth.middleware';
+import { AuthRequest } from '../middlewares/auth.middleware'; 
 
-// 1. API Giao dịch (MUA / BÁN)
+// 1. API Giao dịch (MUA / BÁN) -> /api/portfolio/trade
 export const trade = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id; // Lấy ID của user từ Token
+    const userId = (req.user as any)?.id || (req.user as any)?._id; 
     const { coinSymbol, type, quantity, price } = req.body;
 
-    // Validate dữ liệu đầu vào
     if (!coinSymbol || !type || !quantity || !price) {
-      res.status(400).json({ message: 'Vui lòng cung cấp đủ thông tin giao dịch!' });
+      res.status(400).json({ success: false, message: 'Please provide all required transaction details!' });
       return;
     }
 
-    // BƯỚC A: Lưu biên lai vào bảng Transaction (Lịch sử không bao giờ bị xóa)
-    const newTx = new Transaction({ userId, coinSymbol, type, quantity, price });
+    // A. Lưu lịch sử giao dịch
+    const newTx = new Transaction({ 
+      userId, 
+      coinSymbol: coinSymbol.toUpperCase(), 
+      type, 
+      quantity: Number(quantity), 
+      price: Number(price) 
+    });
     await newTx.save();
 
-    // BƯỚC B: Cập nhật lại Ví (Portfolio)
-    let portfolioItem = await Portfolio.findOne({ userId, coinSymbol });
+    // B. Cập nhật Ví (Portfolio) kèm thuật toán DCA
+    let portfolioItem = await Portfolio.findOne({ userId, coinSymbol: coinSymbol.toUpperCase() });
 
     if (type === 'BUY') {
       if (!portfolioItem) {
-        // Nếu user chưa từng mua coin này -> Tạo mới Ví cho coin này
         portfolioItem = new Portfolio({ 
           userId, 
-          coinSymbol, 
-          quantity, 
-          avgPurchasePrice: price 
+          coinSymbol: coinSymbol.toUpperCase(), 
+          quantity: Number(quantity), 
+          avgPurchasePrice: Number(price) 
         });
       } else {
-        // CÔNG THỨC TÀI CHÍNH TÍNH GIÁ TRUNG BÌNH KHI MUA THÊM (DCA - Dollar Cost Averaging)
         const oldTotalValue = portfolioItem.quantity * portfolioItem.avgPurchasePrice;
-        const newTotalValue = quantity * price;
-        const newTotalQty = portfolioItem.quantity + quantity;
+        const newTotalValue = Number(quantity) * Number(price);
+        const newTotalQty = portfolioItem.quantity + Number(quantity);
         
         portfolioItem.avgPurchasePrice = (oldTotalValue + newTotalValue) / newTotalQty;
         portfolioItem.quantity = newTotalQty;
       }
     } 
     else if (type === 'SELL') {
-      // Kiểm tra xem user có đủ coin để bán không
-      if (!portfolioItem || portfolioItem.quantity < quantity) {
-        res.status(400).json({ message: 'Số dư không đủ để thực hiện lệnh Bán!' });
+      if (!portfolioItem || portfolioItem.quantity < Number(quantity)) {
+        res.status(400).json({ success: false, message: 'Insufficient balance to execute SELL order!' });
         return;
       }
-      
-      // Bán thì chỉ trừ số lượng coin đi, giá vốn trung bình (avgPurchasePrice) GIỮ NGUYÊN
-      portfolioItem.quantity -= quantity;
+      portfolioItem.quantity -= Number(quantity);
     }
 
     if (portfolioItem) {
       await portfolioItem.save();
-      res.status(200).json({ 
-        message: 'Giao dịch thành công!', 
-        portfolio: portfolioItem 
-      });
-    } else {
-      res.status(500).json({ message: 'Lỗi không thể tạo Ví' });
     }
+
+    res.status(201).json({ success: true, message: 'Transaction executed successfully!' });
 
   } catch (error) {
     console.error('Lỗi khi Trade:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// 2. API Lấy Danh sách Ví tài sản của User
-export const getPortfolio = async (req: AuthRequest, res: Response): Promise<void> => {
+// 2. API Lấy Bảng Tổng Hợp Ví (Đã cộng trừ DCA sẵn cho Frontend) -> /api/portfolio/summary
+export const getPortfolioSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id;
-    // Tìm tất cả coin mà user này đang giữ (số lượng > 0)
+    const userId = (req.user as any)?.id || (req.user as any)?._id;
+    // Tìm coin user đang giữ (số lượng > 0)
     const portfolio = await Portfolio.find({ userId, quantity: { $gt: 0 } });
-    res.status(200).json(portfolio);
+    
+    // Map data lại để Frontend dễ đọc (giống với interface Holding)
+    const formattedData = portfolio.map(item => ({
+      symbol: item.coinSymbol,
+      amount: item.quantity,
+      avgPrice: item.avgPurchasePrice
+    }));
+
+    res.status(200).json({ success: true, data: formattedData });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error fetching portfolio summary' });
   }
 };
 
-// 3. API Lấy Lịch sử giao dịch
+// 3. API Lấy Lịch sử giao dịch -> /api/portfolio/transactions
 export const getTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id;
-    // Tìm lịch sử và sắp xếp theo thời gian mới nhất (thằng nào mới mua thì lên đầu)
+    const userId = (req.user as any)?.id || (req.user as any)?._id;
     const transactions = await Transaction.find({ userId }).sort({ timestamp: -1 });
-    res.status(200).json(transactions);
+    res.status(200).json({ success: true, data: transactions });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error fetching history' });
   }
 };

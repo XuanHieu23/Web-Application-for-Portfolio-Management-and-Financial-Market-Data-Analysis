@@ -3,16 +3,9 @@ import { ArrowUpRight, Plus } from 'lucide-react';
 import { axiosClient } from '../services/axiosClient'; 
 import { NotificationBanner } from '../component/ui/NotificationBanner';
 import { io } from 'socket.io-client';
+// ĐÃ XÓA: import { PieChart, Pie, Cell, Tooltip } from 'recharts'; -> Giải quyết triệt để lỗi gạch chân đỏ trong ảnh của bạn!
 
-interface Transaction {
-  _id: string;
-  coinSymbol: string; 
-  type: 'BUY' | 'SELL';
-  quantity: number;   
-  price: number;
-  timestamp: string;
-}
-
+// Không cần interface Transaction nữa vì Frontend không xử lý mảng lịch sử nữa
 interface Holding {
   symbol: string;
   amount: number;
@@ -37,7 +30,7 @@ const KineticDonutChart = ({ data, totalValue }: { data: any[], totalValue: numb
         const percentage = item.value / totalValue;
         const strokeLength = percentage * circumference;
         const dashoffset = currentOffset;
-        currentOffset -= strokeLength; // Dịch chuyển điểm bắt đầu cho lát cắt tiếp theo
+        currentOffset -= strokeLength; 
 
         return (
           <circle
@@ -59,7 +52,8 @@ const KineticDonutChart = ({ data, totalValue }: { data: any[], totalValue: numb
 };
 
 export const Portfolio: React.FC = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // ĐÃ SỬA: Đổi transactions thành holdings, hứng trực tiếp data đã tính toán từ Backend
+  const [holdings, setHoldings] = useState<Holding[]>([]);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -75,7 +69,6 @@ export const Portfolio: React.FC = () => {
     fetchData();
     fetchInitialPrices();
 
-    // CONNECT WEBSOCKET FOR REAL-TIME MATH
     const socket = io('http://localhost:5000');
     
     socket.on('MARKET_LIVE_DATA', (liveData: any[]) => {
@@ -95,12 +88,13 @@ export const Portfolio: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const response = await axiosClient.get('/transactions');
+      // ĐÃ SỬA: Trỏ vào đúng API Summary của Portfolio
+      const response = await axiosClient.get('/portfolio/summary');
       const data = response.data.data || response.data; 
-      if (Array.isArray(data)) setTransactions(data);
+      if (Array.isArray(data)) setHoldings(data);
     } catch (error) {
-      console.error('Error fetching transactions:', error);
-      showNotification('Could not sync transactions with node.', 'error');
+      console.error('Error fetching portfolio:', error);
+      showNotification('Could not sync portfolio with node.', 'error');
     }
   };
 
@@ -125,54 +119,10 @@ export const Portfolio: React.FC = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-const calculateHoldings = (): Holding[] => {
-    const holdingsMap: Record<string, { amount: number; avgPrice: number }> = {};
-    
-    // BƯỚC 1: Khôi phục dòng thời gian (Cũ nhất -> Mới nhất) để tính DCA thuận chiều
-    const sortedTxs = [...transactions].sort((a, b) => {
-      return new Date(a.timestamp || (a as any).date).getTime() - new Date(b.timestamp || (b as any).date).getTime();
-    });
+  // ĐÃ XÓA: Hàm calculateHoldings vì Backend đã gánh logic này rồi!
 
-    sortedTxs.forEach(t => {
-      const sym = t.coinSymbol || (t as any).symbol; 
-      const qty = t.quantity || (t as any).amount;
-      
-      if (!sym || !qty) return;
-      if (!holdingsMap[sym]) holdingsMap[sym] = { amount: 0, avgPrice: 0 };
-      
-      if (t.type === 'BUY') {
-        // Công thức DCA chuẩn: (Giá trị cũ + Giá trị mua mới) / Tổng số lượng mới
-        const oldTotalValue = holdingsMap[sym].amount * holdingsMap[sym].avgPrice;
-        const newTotalValue = qty * t.price;
-        const newTotalQty = holdingsMap[sym].amount + qty;
-        
-        holdingsMap[sym].avgPrice = (oldTotalValue + newTotalValue) / newTotalQty;
-        holdingsMap[sym].amount = newTotalQty;
-      } else if (t.type === 'SELL') {
-        // Bán thì chỉ trừ số lượng. Giá vốn trung bình (avgPrice) KHÔNG ĐỔI!
-        holdingsMap[sym].amount -= qty;
-        
-        // BƯỚC 2: Xóa "Giá vốn ma". Nếu bán hết sạch thì phải reset giá vốn về 0
-        if (holdingsMap[sym].amount <= 0) {
-          holdingsMap[sym].amount = 0;
-          holdingsMap[sym].avgPrice = 0;
-        }
-      }
-    });
-
-    return Object.keys(holdingsMap)
-      .filter(symbol => holdingsMap[symbol].amount > 0)
-      .map(symbol => ({
-        symbol,
-        amount: holdingsMap[symbol].amount,
-        avgPrice: holdingsMap[symbol].avgPrice
-      }));
-  };
-
-  const holdings = calculateHoldings();
   const totalNetWorth = holdings.reduce((acc, h) => acc + (h.amount * (livePrices[h.symbol] || h.avgPrice)), 0);
 
-  // CHART DATA PREPARATION
   const CHART_COLORS = ['#00F0FF', '#00FF9D', '#FF3366', '#7000FF', '#FFB800', '#F97316'];
   const donutData = holdings.map((h, index) => ({
     name: h.symbol,
@@ -191,10 +141,13 @@ const calculateHoldings = (): Holding[] => {
         price: Number(formData.price)
       };
 
-      await axiosClient.post('/transactions', payload);
+      // ĐÃ SỬA: Trỏ vào đúng API thực hiện giao dịch của Portfolio
+      await axiosClient.post('/portfolio/trade', payload);
+      
       showNotification(`${formData.type} ${formData.symbol} order executed successfully.`, 'success');
       setFormData({ symbol: 'BTC', type: 'BUY', amount: '', price: '' });
-      fetchData(); 
+      
+      fetchData(); // Cập nhật lại UI sau khi mua/bán
       
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || 'Transaction failed. Check server logs.';
@@ -290,7 +243,9 @@ const calculateHoldings = (): Holding[] => {
                               </div>
                             </div>
                           </td>
-                          <td className="p-5 text-right font-mono text-white font-medium">{holding.amount}</td>
+                          <td className="p-5 text-right font-mono text-white font-medium">
+                            {holding.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                          </td>
                           <td className="p-5 text-right font-mono text-gray-400">${formatCurrency(holding.avgPrice)}</td>
                           <td className="p-5 text-right font-mono text-white">${formatCurrency(currentPrice)}</td>
                           <td className="p-5 text-right">
@@ -312,7 +267,6 @@ const calculateHoldings = (): Holding[] => {
           <div className="bg-neon-panel border border-gray-800 rounded-2xl p-6">
             <h3 className="text-white font-bold tracking-widest text-sm uppercase mb-6">Asset Allocation</h3>
             
-            {/* THAY THẾ BẰNG KINETIC NATIVE CHART MỚI */}
             <div className="h-48 relative mb-6 flex justify-center items-center">
               
               <KineticDonutChart data={donutData} totalValue={totalNetWorth} />
@@ -358,7 +312,7 @@ const calculateHoldings = (): Holding[] => {
                 <label className="block text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-1.5">Asset Type</label>
                 <div className="relative">
                   <input 
-                    list="coin-suggestions" /* NỐI VỚI DATALIST BÊN DƯỚI */
+                    list="coin-suggestions" 
                     type="text" 
                     value={formData.symbol} 
                     onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })} 
@@ -366,7 +320,6 @@ const calculateHoldings = (): Holding[] => {
                     placeholder="Search or type (e.g. BTC)" 
                     required 
                   />
-                  {/* DANH SÁCH GỢI Ý (KHÔNG ÉP BUỘC PHẢI CHỌN TRONG NÀY) */}
                   <datalist id="coin-suggestions">
                     <option value="BTC">Bitcoin</option>
                     <option value="ETH">Ethereum</option>

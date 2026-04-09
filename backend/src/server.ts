@@ -12,7 +12,7 @@ import { setupBinanceSocket } from './services/binanceSocket';
 import authRoutes from './routes/auth.routes';
 import portfolioRoutes from './routes/portfolio.routes';
 import marketRoutes from './routes/market.routes';
-import transactionRoutes from './routes/transaction.routes'; // ĐÃ FIX LỖI THIẾU IMPORT
+// ĐÃ XÓA: import transactionRoutes
 
 // Cấu hình môi trường
 dotenv.config();
@@ -32,7 +32,7 @@ app.use(express.json()); // Cho phép server đọc dữ liệu JSON
 app.use('/api/auth', authRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/market', marketRoutes);
-app.use('/api/transactions', transactionRoutes);
+// ĐÃ XÓA: app.use('/api/transactions', transactionRoutes);
 
 // Route kiểm tra server (Health Check)
 app.get('/', (req: Request, res: Response) => {
@@ -72,12 +72,11 @@ mongoose
   .then(() => {
     console.log('✅ Connected to MongoDB successfully');
     
-    // ĐÃ FIX: Chỉ mở cổng listen khi Database đã sẵn sàng!
     server.listen(PORT, () => {
       console.log(`🚀 KINETIC Backend is running on port ${PORT}`);
     });
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err);
-    process.exit(1); // Tắt server nếu không kết nối được Database
+    process.exit(1); 
   });

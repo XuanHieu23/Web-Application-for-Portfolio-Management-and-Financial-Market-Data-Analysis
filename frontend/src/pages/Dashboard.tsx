@@ -2,15 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { axiosClient } from '../services/axiosClient';
 
-interface Transaction {
-  _id: string;
-  coinSymbol: string;
-  type: 'BUY' | 'SELL';
-  quantity: number;
-  price: number;
-  timestamp: string;
-}
-
+// KHÔNG CẦN Transaction NỮA
 interface Holding {
   symbol: string;
   amount: number;
@@ -18,7 +10,7 @@ interface Holding {
 }
 
 export const Dashboard: React.FC = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [holdings, setHoldings] = useState<Holding[]>([]); // Lưu trữ thẳng holdings
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
@@ -26,10 +18,12 @@ export const Dashboard: React.FC = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // 1. Lấy lịch sử giao dịch
-        const txRes = await axiosClient.get('/transactions');
-        const txData = txRes.data.data || txRes.data;
-        if (Array.isArray(txData)) setTransactions(txData);
+        // 1. GỌI API SUMMARY (Backend đã tính toán sẵn DCA)
+        const summaryRes = await axiosClient.get('/portfolio/summary'); // Đảm bảo Endpoint này giống với Routes của bạn
+        const summaryData = summaryRes.data.data || summaryRes.data;
+        if (Array.isArray(summaryData)) {
+            setHoldings(summaryData);
+        }
 
         // 2. Lấy giá Live hiện tại
         const priceRes = await fetch('http://localhost:5000/api/market/tickers');
@@ -51,47 +45,8 @@ export const Dashboard: React.FC = () => {
     fetchDashboardData();
   }, []);
 
-  // Tái sử dụng thuật toán tính DCA chuẩn từ trang Portfolio
-  const calculateHoldings = (): Holding[] => {
-    const holdingsMap: Record<string, { amount: number; avgPrice: number }> = {};
-    
-    const sortedTxs = [...transactions].sort((a, b) => {
-      return new Date(a.timestamp || (a as any).date).getTime() - new Date(b.timestamp || (b as any).date).getTime();
-    });
+  // ĐÃ XÓA TOÀN BỘ HÀM calculateHoldings() VÌ BACKEND ĐÃ LÀM THAY
 
-    sortedTxs.forEach(t => {
-      const sym = t.coinSymbol || (t as any).symbol; 
-      const qty = t.quantity || (t as any).amount;
-      
-      if (!sym || !qty) return;
-      if (!holdingsMap[sym]) holdingsMap[sym] = { amount: 0, avgPrice: 0 };
-      
-      if (t.type === 'BUY') {
-        const oldTotalValue = holdingsMap[sym].amount * holdingsMap[sym].avgPrice;
-        const newTotalValue = qty * t.price;
-        const newTotalQty = holdingsMap[sym].amount + qty;
-        holdingsMap[sym].avgPrice = (oldTotalValue + newTotalValue) / newTotalQty;
-        holdingsMap[sym].amount = newTotalQty;
-      } else if (t.type === 'SELL') {
-        holdingsMap[sym].amount -= qty;
-        if (holdingsMap[sym].amount <= 0) {
-          holdingsMap[sym].amount = 0;
-          holdingsMap[sym].avgPrice = 0;
-        }
-      }
-    });
-
-    return Object.keys(holdingsMap)
-      .filter(symbol => holdingsMap[symbol].amount > 0)
-      .map(symbol => ({
-        symbol,
-        amount: holdingsMap[symbol].amount,
-        avgPrice: holdingsMap[symbol].avgPrice
-      }));
-  };
-
-  const holdings = calculateHoldings();
-  
   // Tính tổng quan tài khoản
   const totalInvested = holdings.reduce((acc, h) => acc + (h.amount * h.avgPrice), 0);
   const totalNetWorth = holdings.reduce((acc, h) => acc + (h.amount * (livePrices[h.symbol] || h.avgPrice)), 0);

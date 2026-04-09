@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { trade, getPortfolio, getTransactions } from '../controllers/portfolio.controller';
+import { trade, getPortfolioSummary, getTransactions } from '../controllers/portfolio.controller';
 import { verifyToken } from '../middlewares/auth.middleware';
 
 const router = Router();
@@ -9,7 +9,6 @@ const router = Router();
 router.use(verifyToken);
 
 router.post('/trade', trade);          // API: /api/portfolio/trade
-router.get('/', getPortfolio);         // API: /api/portfolio/
+router.get('/summary', getPortfolioSummary);         // API: /api/portfolio/summary
 router.get('/transactions', getTransactions); // API: /api/portfolio/transactions
-
 export default router;
