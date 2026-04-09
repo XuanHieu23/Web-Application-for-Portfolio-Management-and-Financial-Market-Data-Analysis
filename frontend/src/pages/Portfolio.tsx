@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, Plus } from 'lucide-react';
 import { axiosClient } from '../services/axiosClient'; 
 import { NotificationBanner } from '../component/ui/NotificationBanner';
+import { io } from 'socket.io-client';
 
 interface Transaction {
   _id: string;
-  coinSymbol: string; // Khớp với Backend
+  coinSymbol: string; 
   type: 'BUY' | 'SELL';
-  quantity: number;   // Khớp với Backend
+  quantity: number;   
   price: number;
   timestamp: string;
 }
@@ -18,15 +19,51 @@ interface Holding {
   avgPrice: number;
 }
 
+// ==========================================
+// KINETIC NATIVE SVG DONUT CHART (NO EXTERNAL LIBRARIES)
+// ==========================================
+const KineticDonutChart = ({ data, totalValue }: { data: any[], totalValue: number }) => {
+  const radius = 35;
+  const circumference = 2 * Math.PI * radius;
+  let currentOffset = 0;
+
+  if (data.length === 0 || totalValue === 0) {
+    return <div className="w-full h-full border-2 border-dashed border-gray-800 rounded-full flex items-center justify-center text-gray-600 text-xs font-mono">NO DATA</div>;
+  }
+
+  return (
+    <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-[0_0_15px_rgba(0,240,255,0.1)]">
+      {data.map((item) => {
+        const percentage = item.value / totalValue;
+        const strokeLength = percentage * circumference;
+        const dashoffset = currentOffset;
+        currentOffset -= strokeLength; // Dịch chuyển điểm bắt đầu cho lát cắt tiếp theo
+
+        return (
+          <circle
+            key={item.name}
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="transparent"
+            stroke={item.fill}
+            strokeWidth="12"
+            strokeDasharray={`${strokeLength} ${circumference}`}
+            strokeDashoffset={dashoffset}
+            className="transition-all duration-1000 ease-in-out hover:stroke-[14px] cursor-crosshair"
+          />
+        );
+      })}
+    </svg>
+  );
+};
+
 export const Portfolio: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
-  
-  // Quản lý thông báo Banner
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Dữ liệu form Quick Add
   const [formData, setFormData] = useState({
     symbol: 'BTC',
     type: 'BUY',
@@ -36,26 +73,38 @@ export const Portfolio: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    fetchLivePrices();
+    fetchInitialPrices();
+
+    // CONNECT WEBSOCKET FOR REAL-TIME MATH
+    const socket = io('http://localhost:5000');
+    
+    socket.on('MARKET_LIVE_DATA', (liveData: any[]) => {
+      setLivePrices((prev) => {
+        const newPrices = { ...prev };
+        liveData.forEach((coin: any) => {
+          newPrices[coin.symbol.replace('USDT', '')] = parseFloat(coin.price);
+        });
+        return newPrices;
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
-  // 1. KÉO LỊCH SỬ GIAO DỊCH TỪ BACKEND
   const fetchData = async () => {
     try {
       const response = await axiosClient.get('/transactions');
-      // Dựa theo controller bạn gửi, có thể response là mảng luôn hoặc bọc trong .data
       const data = response.data.data || response.data; 
-      if (Array.isArray(data)) {
-        setTransactions(data);
-      }
+      if (Array.isArray(data)) setTransactions(data);
     } catch (error) {
-      console.error('Lỗi lấy giao dịch:', error);
+      console.error('Error fetching transactions:', error);
       showNotification('Could not sync transactions with node.', 'error');
     }
   };
 
-  // 2. KÉO GIÁ LIVE TỪ BINANCE (Thông qua Backend Proxy)
-  const fetchLivePrices = async () => {
+  const fetchInitialPrices = async () => {
     try {
       const res = await fetch('http://localhost:5000/api/market/tickers');
       const resData = await res.json();
@@ -67,7 +116,7 @@ export const Portfolio: React.FC = () => {
         setLivePrices(priceMap);
       }
     } catch (error) {
-      console.error('Lỗi lấy giá live:', error);
+      console.error('Error fetching initial live prices:', error);
     }
   };
 
@@ -76,56 +125,76 @@ export const Portfolio: React.FC = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // 3. TÍNH TOÁN TỔNG TÀI SẢN TỪ LỊCH SỬ
-  const calculateHoldings = (): Holding[] => {
-    const holdingsMap: Record<string, { totalAmount: number; totalCost: number }> = {};
+const calculateHoldings = (): Holding[] => {
+    const holdingsMap: Record<string, { amount: number; avgPrice: number }> = {};
     
-    transactions.forEach(t => {
-      // Đảm bảo an toàn nếu backend trả về symbol hay coinSymbol
+    // BƯỚC 1: Khôi phục dòng thời gian (Cũ nhất -> Mới nhất) để tính DCA thuận chiều
+    const sortedTxs = [...transactions].sort((a, b) => {
+      return new Date(a.timestamp || (a as any).date).getTime() - new Date(b.timestamp || (b as any).date).getTime();
+    });
+
+    sortedTxs.forEach(t => {
       const sym = t.coinSymbol || (t as any).symbol; 
       const qty = t.quantity || (t as any).amount;
       
       if (!sym || !qty) return;
-
-      if (!holdingsMap[sym]) holdingsMap[sym] = { totalAmount: 0, totalCost: 0 };
+      if (!holdingsMap[sym]) holdingsMap[sym] = { amount: 0, avgPrice: 0 };
       
       if (t.type === 'BUY') {
-        holdingsMap[sym].totalAmount += qty;
-        holdingsMap[sym].totalCost += (qty * t.price);
-      } else {
-        holdingsMap[sym].totalAmount -= qty;
+        // Công thức DCA chuẩn: (Giá trị cũ + Giá trị mua mới) / Tổng số lượng mới
+        const oldTotalValue = holdingsMap[sym].amount * holdingsMap[sym].avgPrice;
+        const newTotalValue = qty * t.price;
+        const newTotalQty = holdingsMap[sym].amount + qty;
+        
+        holdingsMap[sym].avgPrice = (oldTotalValue + newTotalValue) / newTotalQty;
+        holdingsMap[sym].amount = newTotalQty;
+      } else if (t.type === 'SELL') {
+        // Bán thì chỉ trừ số lượng. Giá vốn trung bình (avgPrice) KHÔNG ĐỔI!
+        holdingsMap[sym].amount -= qty;
+        
+        // BƯỚC 2: Xóa "Giá vốn ma". Nếu bán hết sạch thì phải reset giá vốn về 0
+        if (holdingsMap[sym].amount <= 0) {
+          holdingsMap[sym].amount = 0;
+          holdingsMap[sym].avgPrice = 0;
+        }
       }
     });
 
     return Object.keys(holdingsMap)
-      .filter(symbol => holdingsMap[symbol].totalAmount > 0)
+      .filter(symbol => holdingsMap[symbol].amount > 0)
       .map(symbol => ({
         symbol,
-        amount: holdingsMap[symbol].totalAmount,
-        avgPrice: holdingsMap[symbol].totalCost / holdingsMap[symbol].totalAmount
+        amount: holdingsMap[symbol].amount,
+        avgPrice: holdingsMap[symbol].avgPrice
       }));
   };
 
   const holdings = calculateHoldings();
+  const totalNetWorth = holdings.reduce((acc, h) => acc + (h.amount * (livePrices[h.symbol] || h.avgPrice)), 0);
 
-  // 4. BẮN GIAO DỊCH XUỐNG BACKEND
+  // CHART DATA PREPARATION
+  const CHART_COLORS = ['#00F0FF', '#00FF9D', '#FF3366', '#7000FF', '#FFB800', '#F97316'];
+  const donutData = holdings.map((h, index) => ({
+    name: h.symbol,
+    value: h.amount * (livePrices[h.symbol] || h.avgPrice),
+    fill: CHART_COLORS[index % CHART_COLORS.length]
+  }));
+
   const handleQuickAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // CHÚ Ý TẠI ĐÂY: Đổi tên biến cho khớp 100% với file transaction.model.ts của Backend
       const payload = {
-        coinSymbol: formData.symbol, // Backend cần 'coinSymbol'
+        coinSymbol: formData.symbol, 
         type: formData.type,
-        quantity: Number(formData.amount), // Backend cần 'quantity'
+        quantity: Number(formData.amount), 
         price: Number(formData.price)
       };
 
       await axiosClient.post('/transactions', payload);
-
       showNotification(`${formData.type} ${formData.symbol} order executed successfully.`, 'success');
       setFormData({ symbol: 'BTC', type: 'BUY', amount: '', price: '' });
-      fetchData(); // Load lại data ngay lập tức
+      fetchData(); 
       
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || 'Transaction failed. Check server logs.';
@@ -140,7 +209,6 @@ export const Portfolio: React.FC = () => {
   return (
     <div className="space-y-6 relative">
       
-      {/* BANNER THÔNG BÁO */}
       {notification && (
         <div className="fixed top-20 right-6 z-[100] animate-in fade-in slide-in-from-right-10">
           <NotificationBanner 
@@ -151,12 +219,11 @@ export const Portfolio: React.FC = () => {
         </div>
       )}
 
-      {/* HEADER: NET WORTH */}
       <div>
         <p className="text-gray-500 font-bold tracking-widest text-xs mb-2 uppercase">CURRENT NET WORTH</p>
         <div className="flex items-end gap-4">
           <h1 className="text-5xl font-extrabold text-white tracking-tight">
-            ${formatCurrency(holdings.reduce((acc, h) => acc + (h.amount * (livePrices[h.symbol] || h.avgPrice)), 0))}
+            ${formatCurrency(totalNetWorth)}
           </h1>
           <div className="flex items-center gap-1 bg-green-950/40 border border-neon-green/30 text-neon-green px-3 py-1.5 rounded-lg mb-2 text-sm font-bold">
             <ArrowUpRight size={16} /> Live Data
@@ -165,13 +232,7 @@ export const Portfolio: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
-        {/* =======================================
-            CỘT TRÁI (BẢN ĐỒ & HOLDINGS TABLE) 
-            ======================================= */}
         <div className="xl:col-span-2 space-y-6">
-          
-          {/* Chart Placeholder */}
           <div className="bg-neon-panel border border-gray-800 rounded-2xl p-6 h-80 relative flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-white font-bold tracking-widest text-sm uppercase">Total Portfolio Value</h3>
@@ -184,11 +245,10 @@ export const Portfolio: React.FC = () => {
               </div>
             </div>
             <div className="flex-1 border-2 border-dashed border-gray-800 rounded-xl flex items-center justify-center text-gray-600 font-mono text-sm bg-gradient-to-t from-neon-cyan/5 to-transparent">
-              [ Area Chart Placeholder ]
+              [ Area Chart Placeholder - Upcoming Feature ]
             </div>
           </div>
 
-          {/* Asset Holdings Table */}
           <div className="bg-neon-panel border border-gray-800 rounded-2xl overflow-hidden shadow-lg">
             <div className="flex justify-between items-center p-6 border-b border-gray-800 bg-[#151924]/50">
               <h3 className="text-white font-bold tracking-widest text-sm uppercase">Asset Holdings</h3>
@@ -248,37 +308,36 @@ export const Portfolio: React.FC = () => {
           </div>
         </div>
 
-        {/* =======================================
-            CỘT PHẢI (SIDEBAR & QUICK ADD)
-            ======================================= */}
         <div className="space-y-6">
-          
-          {/* Asset Allocation */}
           <div className="bg-neon-panel border border-gray-800 rounded-2xl p-6">
             <h3 className="text-white font-bold tracking-widest text-sm uppercase mb-6">Asset Allocation</h3>
-            <div className="h-48 border-2 border-dashed border-gray-800 rounded-full w-48 mx-auto flex items-center justify-center text-gray-500 text-xs font-mono mb-6 relative">
-              [ Donut Chart ]
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
+            
+            {/* THAY THẾ BẰNG KINETIC NATIVE CHART MỚI */}
+            <div className="h-48 relative mb-6 flex justify-center items-center">
+              
+              <KineticDonutChart data={donutData} totalValue={totalNetWorth} />
+              
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-2xl font-bold text-white">{holdings.length}</span>
                 <span className="text-[10px] text-gray-500 tracking-widest">ASSETS</span>
               </div>
             </div>
+
             <div className="space-y-3">
               {holdings.map((h, i) => (
                 <div key={h.symbol} className="flex justify-between items-center text-sm">
                   <div className="flex items-center gap-2 text-gray-400">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: i % 2 === 0 ? '#00F0FF' : '#00FF9D'}}></span>
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length]}}></span>
                     {h.symbol}
                   </div>
                   <span className="text-white font-mono font-medium">
-                    {Math.round((h.amount * h.avgPrice) / (holdings.reduce((acc, curr) => acc + (curr.amount * curr.avgPrice), 0) || 1) * 100)}%
+                    {Math.round((h.amount * (livePrices[h.symbol] || h.avgPrice)) / (totalNetWorth || 1) * 100)}%
                   </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Quick Add Form */}
           <div className="bg-gradient-to-br from-[#151924] to-[#0A0D12] border border-gray-800 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/5 rounded-full blur-2xl pointer-events-none"></div>
             
@@ -298,14 +357,36 @@ export const Portfolio: React.FC = () => {
               <div>
                 <label className="block text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-1.5">Asset Type</label>
                 <div className="relative">
-                  <input type="text" value={formData.symbol} onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })} className="w-full bg-[#0B0E14] border border-gray-700 text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-neon-cyan font-mono text-sm uppercase" placeholder="BTC" required />
+                  <input 
+                    list="coin-suggestions" /* NỐI VỚI DATALIST BÊN DƯỚI */
+                    type="text" 
+                    value={formData.symbol} 
+                    onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })} 
+                    className="w-full bg-[#0B0E14] border border-gray-700 text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-neon-cyan font-mono text-sm uppercase" 
+                    placeholder="Search or type (e.g. BTC)" 
+                    required 
+                  />
+                  {/* DANH SÁCH GỢI Ý (KHÔNG ÉP BUỘC PHẢI CHỌN TRONG NÀY) */}
+                  <datalist id="coin-suggestions">
+                    <option value="BTC">Bitcoin</option>
+                    <option value="ETH">Ethereum</option>
+                    <option value="BNB">Binance Coin</option>
+                    <option value="SOL">Solana</option>
+                    <option value="XRP">Ripple</option>
+                    <option value="ADA">Cardano</option>
+                    <option value="DOGE">Dogecoin</option>
+                    <option value="LINK">Chainlink</option>
+                    <option value="AVAX">Avalanche</option>
+                  </datalist>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-1.5">Amount</label>
-                  <input type="number" step="any" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} className="w-full bg-[#0B0E14] border border-gray-700 text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-neon-cyan font-mono text-sm" placeholder="0.00" required />
+                    <div className="relative">
+                      <input type="number" step="any" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} className="w-full bg-[#0B0E14] border border-gray-700 text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-neon-cyan font-mono text-sm" placeholder="0.00" required />
+                    </div>
                 </div>
                 <div>
                   <div className="flex justify-between items-end mb-1.5">
@@ -322,13 +403,12 @@ export const Portfolio: React.FC = () => {
                     </button>
                   </div>
                   <input type="number" step="any" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="w-full bg-[#0B0E14] border border-gray-700 text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-neon-cyan font-mono text-sm" placeholder="$ 0.00" required />
-                  </div>
+                </div>
               </div>
 
               <button type="submit" disabled={loading} className="w-full mt-4 py-3 bg-neon-cyan text-black rounded-lg text-sm font-bold hover:bg-[#00d0e0] hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50">
                 {loading ? 'EXECUTING...' : 'EXECUTE TRANSACTION'}
               </button>
-              <p className="text-center text-[9px] text-gray-600 tracking-widest uppercase mt-2">Last synced with node: 12ms ago</p>
             </form>
           </div>
 

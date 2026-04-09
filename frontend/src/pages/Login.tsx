@@ -8,7 +8,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
 
   // State lưu dữ liệu form
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ username: '', email: '', password: '' });
   
   // State lưu lỗi của từng ô input
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; general?: string }>({});
@@ -17,7 +17,7 @@ export const Login: React.FC = () => {
   // Hàm kiểm tra lỗi trước khi gửi
   const validateForm = () => {
     const newErrors: any = {};
-    if (!isLogin && !formData.name.trim()) newErrors.name = 'Full name is required';
+    if (!isLogin && !formData.username.trim()) newErrors.name = 'Username is required';
     
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
@@ -37,26 +37,37 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return; // Dừng lại nếu form có lỗi
+    if (!validateForm()) return; 
 
     setLoading(true);
-    setErrors({}); // Xóa lỗi cũ
+    setErrors({}); 
 
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-      const payload = isLogin ? { email: formData.email, password: formData.password } : formData;
+      const endpoint = isLogin ? '/auth/login' : '/auth/register';
+      
+      // CHÚ Ý: Đã đổi formData.name thành formData.username theo đúng Backend
+      const payload = isLogin 
+        ? { email: formData.email, password: formData.password } 
+        : { username: formData.username, email: formData.email, password: formData.password };
 
       const response = await axiosClient.post(endpoint, payload);
 
-      if (response.data.success) {
-        // Lưu token vào localStorage (Kiểm tra lại backend của bạn trả token ở trường nào nhé)
-        const token = response.data.token || response.data.data?.token;
-        if (token) localStorage.setItem('token', token);
-        
-        navigate('/home'); // Đăng nhập xong đá thẳng vào Dashboard
+      // ĐÃ FIX: Logic xử lý theo đúng phản hồi của Backend
+      if (isLogin) {
+        // Nếu là ĐĂNG NHẬP -> Backend trả về token
+        const token = response.data.token;
+        if (token) {
+          localStorage.setItem('token', token);
+          navigate('/portfolio'); // Chuyển thẳng vào Portfolio
+        }
+      } else {
+        // Nếu là ĐĂNG KÝ -> Backend chỉ trả về message, không có token
+        // Chuyển người dùng về trạng thái Login để họ tự đăng nhập
+        setIsLogin(true);
+        setFormData({ username: '', email: formData.email, password: '' });
       }
+      
     } catch (error: any) {
-      // Bắt lỗi từ Backend (Sai pass, email đã tồn tại...) và hiển thị lỗi chung
       const message = error.response?.data?.message || 'Authentication failed. Please try again.';
       setErrors({ general: message });
     } finally {
@@ -92,13 +103,13 @@ export const Login: React.FC = () => {
           {/* Input Name (Chỉ hiện khi Đăng ký) */}
           {!isLogin && (
             <div>
-              <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">Full Name</label>
+              <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">UserName</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input 
                   type="text" 
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors ${errors.name ? 'border-neon-red focus:border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
                   placeholder="John Doe"
                 />

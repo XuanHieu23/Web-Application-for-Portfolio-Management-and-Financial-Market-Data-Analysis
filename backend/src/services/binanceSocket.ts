@@ -1,9 +1,13 @@
 import { Server as SocketIOServer } from 'socket.io';
+import ws from 'ws';
 import WebSocket from 'ws';
 
 export const setupBinanceSocket = (io: SocketIOServer) => {
   // Kết nối nội bộ từ Backend của bạn đến Binance (Luồng Mini Ticker 24h của tất cả các coin)
   const binanceWs = new WebSocket('wss://stream.binance.com:9443/ws/!miniTicker@arr');
+  binanceWs.on('error', (error) => {
+  console.error('⚠️ [Cảnh báo] Lỗi kết nối WebSocket tới Binance:', error.message);
+});
 
   binanceWs.on('open', () => {
     console.log('✅ Backend has connected successfully to Binance');
