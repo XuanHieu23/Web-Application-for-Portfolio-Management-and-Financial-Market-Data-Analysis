@@ -12,6 +12,7 @@ import { setupBinanceSocket } from './services/binanceSocket';
 import authRoutes from './routes/auth.routes';
 import portfolioRoutes from './routes/portfolio.routes';
 import marketRoutes from './routes/market.routes';
+import paymentRoutes from './routes/payment.routes';
 // ĐÃ XÓA: import transactionRoutes
 
 // Cấu hình môi trường
@@ -32,6 +33,7 @@ app.use(express.json()); // Cho phép server đọc dữ liệu JSON
 app.use('/api/auth', authRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/market', marketRoutes);
+app.use('/api/payment', paymentRoutes);
 // ĐÃ XÓA: app.use('/api/transactions', transactionRoutes);
 
 // Route kiểm tra server (Health Check)
