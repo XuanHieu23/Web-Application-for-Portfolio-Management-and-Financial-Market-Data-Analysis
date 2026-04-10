@@ -18,7 +18,7 @@ export const LandingPage: React.FC = () => {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-neon-cyan to-blue-600 flex items-center justify-center font-bold text-black">
             K
           </div>
-          <span className="text-xl font-bold tracking-wider">KINETIC<span className="text-neon-cyan">.OBSIDIAN</span></span>
+          <span className="text-xl font-bold tracking-wider">POMAFINA<span className="text-neon-cyan">.OBSIDIAN</span></span>
         </div>
         <div className="hidden md:flex gap-8 text-sm font-medium text-gray-400">
           <a href="#features" className="hover:text-white transition-colors">Features</a>
@@ -46,7 +46,7 @@ export const LandingPage: React.FC = () => {
         </h1>
         
         <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-          The ultimate Web3 terminal for portfolio management. Track assets, analyze market data, and get personalized insights from the Kinetic AI Oracle.
+          The ultimate Web3 terminal for portfolio management. Track assets, analyze market data, and get personalized insights from the POMAFINA AI Oracle.
         </p>
 
         <div className="flex flex-col sm:flex-row justify-center gap-4">

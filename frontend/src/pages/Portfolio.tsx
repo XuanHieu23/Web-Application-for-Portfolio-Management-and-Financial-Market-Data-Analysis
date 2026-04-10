@@ -13,9 +13,9 @@ interface Holding {
 }
 
 // ==========================================
-// KINETIC NATIVE SVG DONUT CHART (NO EXTERNAL LIBRARIES)
+// POMAFINA NATIVE SVG DONUT CHART (NO EXTERNAL LIBRARIES)
 // ==========================================
-const KineticDonutChart = ({ data, totalValue }: { data: any[], totalValue: number }) => {
+const POMAFINADonutChart = ({ data, totalValue }: { data: any[], totalValue: number }) => {
   const radius = 35;
   const circumference = 2 * Math.PI * radius;
   let currentOffset = 0;
@@ -269,7 +269,7 @@ export const Portfolio: React.FC = () => {
             
             <div className="h-48 relative mb-6 flex justify-center items-center">
               
-              <KineticDonutChart data={donutData} totalValue={totalNetWorth} />
+              <POMAFINADonutChart data={donutData} totalValue={totalNetWorth} />
               
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-2xl font-bold text-white">{holdings.length}</span>

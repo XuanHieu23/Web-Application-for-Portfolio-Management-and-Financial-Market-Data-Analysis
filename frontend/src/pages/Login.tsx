@@ -87,7 +87,7 @@ export const Login: React.FC = () => {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-neon-cyan to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.4)] mb-4">
             <Zap size={32} className="text-white" fill="white" />
           </div>
-          <h2 className="text-2xl font-bold tracking-wider">KINETIC<span className="text-neon-cyan">.OBSIDIAN</span></h2>
+          <h2 className="text-2xl font-bold tracking-wider">POMAFINA<span className="text-neon-cyan">.OBSIDIAN</span></h2>
           <p className="text-gray-500 text-sm mt-1">{isLogin ? 'Access your terminal' : 'Initialize your node'}</p>
         </div>
 
@@ -129,7 +129,7 @@ export const Login: React.FC = () => {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors font-mono text-sm ${errors.email ? 'border-neon-red focus:border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
-                placeholder="commander@kinetic.com"
+                placeholder="commander@POMAFINA.com"
               />
             </div>
             {/* Lỗi Inline cho Email */}

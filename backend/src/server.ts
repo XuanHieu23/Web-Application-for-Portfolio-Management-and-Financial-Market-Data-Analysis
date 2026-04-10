@@ -12,71 +12,58 @@ import { setupBinanceSocket } from './services/binanceSocket';
 import authRoutes from './routes/auth.routes';
 import portfolioRoutes from './routes/portfolio.routes';
 import marketRoutes from './routes/market.routes';
-import paymentRoutes from './routes/payment.routes';
-// ĐÃ XÓA: import transactionRoutes
+import paymentRoutes from './routes/payment.routes'; // THÊM ROUTE THANH TOÁN
 
-// Cấu hình môi trường
 dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
-// ==========================================
-// 1. MIDDLEWARE
-// ==========================================
-app.use(cors()); // Cho phép Frontend gọi API từ domain khác
-app.use(express.json()); // Cho phép server đọc dữ liệu JSON
+app.use(cors());
 
 // ==========================================
-// 2. API ROUTES
+// 1. WEBHOOK ROUTE (PHẢI ĐỨNG ĐẦU TIÊN)
+// ==========================================
+// Tuyệt đối không dùng express.json() ở trên dòng này
+app.use('/api/payment', paymentRoutes);
+
+// ==========================================
+// 2. MIDDLEWARE CHUNG
+// ==========================================
+app.use(express.json()); // Đọc body dạng JSON cho các API khác
+
+// ==========================================
+// 3. API ROUTES
 // ==========================================
 app.use('/api/auth', authRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/market', marketRoutes);
-app.use('/api/payment', paymentRoutes);
-// ĐÃ XÓA: app.use('/api/transactions', transactionRoutes);
 
-// Route kiểm tra server (Health Check)
 app.get('/', (req: Request, res: Response) => {
-  res.send('KINETIC Financial Dashboard API is running...');
+  res.send('POMAFINA Financial Dashboard API is running...');
 });
 
 // ==========================================
-// 3. KHỞI TẠO HTTP SERVER VÀ WEBSOCKET
+// 4. WEBSOCKET & DATABASE BOOTSTRAP
 // ==========================================
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: '*', // Lên production sẽ đổi thành domain của Frontend
-    methods: ['GET', 'POST', 'PUT', 'DELETE']
-  }
+  cors: { origin: '*', methods: ['GET', 'POST'] }
 });
 
-// Lắng nghe người dùng truy cập web
 io.on('connection', (socket) => {
-  console.log(`📡 A terminal client has connected: ${socket.id}`);
-  
-  socket.on('disconnect', () => {
-    console.log(`🔌 Client disconnected: ${socket.id}`);
-  });
+  console.log(`📡 Client connected: ${socket.id}`);
+  socket.on('disconnect', () => console.log(`🔌 Client disconnected: ${socket.id}`));
 });
 
-// Khởi động luồng hút dữ liệu từ Binance
 setupBinanceSocket(io);
 
-// ==========================================
-// 4. KẾT NỐI DATABASE & KHỞI ĐỘNG SERVER
-// ==========================================
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/financial_dashboard';
 
-mongoose
-  .connect(MONGODB_URI)
+mongoose.connect(MONGODB_URI)
   .then(() => {
-    console.log('✅ Connected to MongoDB successfully');
-    
-    server.listen(PORT, () => {
-      console.log(`🚀 KINETIC Backend is running on port ${PORT}`);
-    });
+    console.log('✅ Connected to MongoDB');
+    server.listen(PORT, () => console.log(`🚀 POMAFINA Backend is running on port ${PORT}`));
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, BrainCircuit, Activity, Zap } from 'lucide-react';
+import { TrendingUp, TrendingDown, BrainCircuit, Activity, Lock } from 'lucide-react';
 import { axiosClient } from '../services/axiosClient';
 
 interface Holding {
@@ -12,6 +12,25 @@ export const Dashboard: React.FC = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingPayment, setLoadingPayment] = useState(false);
+
+  const handleUpgrade = async () => {
+    try {
+      setLoadingPayment(true);
+      // Gọi API đến Backend để xin link thanh toán Stripe
+      const response = await axiosClient.post('/payment/create-checkout-session');
+      
+      if (response.data && response.data.url) {
+        // Phóng trình duyệt của user sang trang quẹt thẻ của Stripe
+        window.location.href = response.data.url;
+      }
+    } catch (error) {
+      console.error('Lỗi khởi tạo thanh toán:', error);
+      alert('Không thể kết nối đến Stripe. Hãy kiểm tra lại Backend và Terminal.');
+    } finally {
+      setLoadingPayment(false);
+    }
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -90,12 +109,13 @@ export const Dashboard: React.FC = () => {
                   </linearGradient>
                 </defs>
               </svg>
-              <span className="text-neon-cyan/70 font-mono text-sm z-10">[ KINETIC LINE CHART RENDERING AREA ]</span>
+              <span className="text-neon-cyan/70 font-mono text-sm z-10">[ POMAFINA LINE CHART RENDERING AREA ]</span>
             </div>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: KINETIC AI ORACLE */}
+        {/* RIGHT COLUMN: POMAFINA AI ORACLE */}
+        {/* RIGHT COLUMN: POMAFINA AI ORACLE (PAYWALL) */}
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-[#151924] to-[#0A0D12] border border-neon-cyan/30 rounded-2xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.05)] h-[400px] flex flex-col">
             <div className="absolute top-0 right-0 w-40 h-40 bg-neon-cyan/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -105,31 +125,36 @@ export const Dashboard: React.FC = () => {
                 <BrainCircuit className="text-neon-cyan animate-pulse" size={24} />
                 <h3 className="text-white font-extrabold tracking-widest text-sm uppercase">AI Oracle</h3>
               </div>
-              <span className="text-[10px] bg-neon-cyan/20 text-neon-cyan px-2 py-1 rounded font-bold border border-neon-cyan/30">GEMINI LLM</span>
+              <span className="text-[10px] bg-gray-800 text-gray-400 px-2 py-1 rounded font-bold border border-gray-700">FREE TIER</span>
             </div>
 
-            <div className="flex-1 bg-[#0B0E14] border border-gray-800 rounded-xl p-4 relative z-10 overflow-y-auto">
-              {holdings.length === 0 ? (
-                <p className="text-gray-500 font-mono text-xs leading-relaxed text-center mt-10">
-                  Waiting for portfolio data to initialize AI analysis...
+            {/* VÙNG BỊ LÀM MỜ VÌ CHƯA TRẢ TIỀN */}
+            <div className="flex-1 bg-[#0B0E14] border border-gray-800 rounded-xl p-4 relative z-10 overflow-hidden flex flex-col items-center justify-center text-center">
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6">
+                <Lock className="text-neon-cyan mb-3" size={32} />
+                <h4 className="text-white font-bold text-sm mb-2">Premium Feature Locked</h4>
+                <p className="text-gray-400 text-xs mb-6 font-mono leading-relaxed">
+                  Unlock POMAFINA AI Oracle. Get personalized portfolio analysis powered by Groq and FinBERT market sentiment.
                 </p>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-gray-300 font-mono text-xs leading-relaxed">
-                    <span className="text-neon-cyan font-bold">{'>'} ANALYZING PORTFOLIO...</span><br/>
-                    Current allocation detected: {holdings.length} assets.<br/>
-                    Overall PnL is <span className={isTotalProfit ? 'text-neon-green' : 'text-neon-red'}>{isTotalProfit ? 'positive' : 'negative'}</span>.
-                  </p>
-                  <p className="text-gray-400 font-mono text-xs leading-relaxed border-l-2 border-neon-cyan pl-3">
-                    [ AI Insights will be generated here once the Gemini API is fully integrated in the upcoming phase. The system will process your {holdings[0]?.symbol} holdings against global FinBERT sentiment. ]
-                  </p>
-                </div>
-              )}
+                
+                {/* NÚT GỌI API THANH TOÁN */}
+                <button 
+                  onClick={handleUpgrade}
+                  disabled={loadingPayment}
+                  className="w-full py-3 bg-neon-cyan text-black rounded-lg text-sm font-bold hover:bg-[#00d0e0] hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loadingPayment ? 'INITIALIZING SECURE LINK...' : 'UPGRADE TO PRO ($15/mo)'}
+                </button>
+              </div>
+
+              {/* Dữ liệu giả lập mờ mờ ở dưới */}
+              <div className="opacity-30 space-y-4 w-full text-left">
+                <div className="h-4 bg-gray-800 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-800 rounded w-full"></div>
+                <div className="h-4 bg-gray-800 rounded w-5/6"></div>
+              </div>
             </div>
 
-            <button className="w-full mt-4 py-3 bg-gray-900 border border-gray-700 text-neon-cyan rounded-lg text-xs font-bold hover:bg-gray-800 hover:border-neon-cyan transition-all flex items-center justify-center gap-2 relative z-10">
-              <Zap size={14} /> GENERATE NEW INSIGHT
-            </button>
           </div>
         </div>
       </div>

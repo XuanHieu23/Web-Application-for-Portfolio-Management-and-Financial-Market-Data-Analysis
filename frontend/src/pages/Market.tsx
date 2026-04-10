@@ -301,7 +301,7 @@ export const Markets: React.FC = () => {
 
         <div className="bg-gradient-to-br from-[#151924] to-[#0A0D12] border border-gray-800 p-6 rounded-2xl relative overflow-hidden group">
           <div className="absolute -right-10 -top-10 w-32 h-32 bg-neon-cyan/10 blur-[40px] rounded-full group-hover:bg-neon-cyan/20 transition-all duration-500"></div>
-          <h4 className="text-white font-bold text-lg mb-2 relative z-10">KINETIC <span className="text-neon-cyan">PRO</span></h4>
+          <h4 className="text-white font-bold text-lg mb-2 relative z-10">POMAFINA <span className="text-neon-cyan">PRO</span></h4>
           <p className="text-gray-400 text-xs leading-relaxed mb-6 relative z-10">
             Unlock institutional-grade order flow analytics and MEV protection.
           </p>

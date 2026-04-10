@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createChart, type Time } from 'lightweight-charts';
-import { KINETIC_THEME } from '../../constants/theme';
+import { POMAFINA_THEME } from '../../constants/theme';
 import { X } from 'lucide-react'; // Icon nút X để đóng
 
 // Định nghĩa Props: Nhận vào tên Coin và Hàm đóng cửa sổ
@@ -17,17 +17,17 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ symbol, onCl
 
     const chart = createChart(chartContainerRef.current, {
       autoSize: true, 
-      layout: KINETIC_THEME.chartLayout,
-      grid: KINETIC_THEME.gridLines,
+      layout: POMAFINA_THEME.chartLayout,
+      grid: POMAFINA_THEME.gridLines,
       timeScale: { timeVisible: true, secondsVisible: false },
     });
 
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: KINETIC_THEME.colors.green,
-      downColor: KINETIC_THEME.colors.red,
+      upColor: POMAFINA_THEME.colors.green,
+      downColor: POMAFINA_THEME.colors.red,
       borderVisible: false,
-      wickUpColor: KINETIC_THEME.colors.green,
-      wickDownColor: KINETIC_THEME.colors.red,
+      wickUpColor: POMAFINA_THEME.colors.green,
+      wickDownColor: POMAFINA_THEME.colors.red,
     });
 
     let isMounted = true;

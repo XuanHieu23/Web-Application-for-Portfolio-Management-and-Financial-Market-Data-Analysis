@@ -1,6 +1,6 @@
 import { ColorType } from 'lightweight-charts';
 
-export const KINETIC_THEME = {
+export const POMAFINA_THEME = {
   colors: {
     // Màu nền
     background: '#0B0E14',

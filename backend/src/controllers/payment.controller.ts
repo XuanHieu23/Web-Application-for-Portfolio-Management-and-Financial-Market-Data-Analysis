@@ -1,48 +1,66 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import Stripe from 'stripe';
-import { AuthRequest } from '../middlewares/auth.middleware'; // Đảm bảo đường dẫn đúng với middleware của bạn
+import { AuthRequest } from '../middlewares/auth.middleware';
+import User from '../models/user.model'; // Nhớ import model User
 
-// Khởi tạo Stripe với Secret Key từ file .env
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2026-03-25.dahlia', // Phiên bản API của Stripe
-});
-
+// API 1: TẠO LINK THANH TOÁN
 export const createCheckoutSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2026-03-25.dahlia' });
     const userId = (req.user as any)?.id || (req.user as any)?._id;
 
-    // Tạo một phiên thanh toán (Checkout Session) trên Stripe
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      mode: 'subscription', // Chế độ thu phí hàng tháng
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'KINETIC PRO Subscription',
-              description: 'Unlock KINETIC AI Oracle and Advanced Market Sentiment (Powered by Groq & FinBERT)',
-            },
-            unit_amount: 1500, // 1500 cents = $15.00 / tháng
-            recurring: {
-              interval: 'month',
-            },
+      mode: 'subscription',
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: { 
+            name: 'POMAFINA PRO Subscription',
+            description: 'Unlock POMAFINA AI Oracle and Advanced Market Sentiment'
           },
-          quantity: 1,
+          unit_amount: 1500, // $15.00
+          recurring: { interval: 'month' },
         },
-      ],
-      metadata: {
-        userId: userId.toString(), // NHỚ KỸ: Gắn ID của user vào đây để lát nữa Stripe báo về mình còn biết ai vừa trả tiền
-      },
-      // Chuyển hướng người dùng về lại Frontend sau khi thanh toán xong hoặc hủy
-      success_url: `http://localhost:5173/dashboard?payment=success`,
-      cancel_url: `http://localhost:5173/dashboard?payment=cancelled`,
+        quantity: 1,
+      }],
+      metadata: { userId: userId.toString() }, // Gắn thẻ ID để Webhook nhận diện
+      success_url: `${process.env.CLIENT_URL}/payment/success`,
+      cancel_url: `${process.env.CLIENT_URL}/payment/cancelled`,
     });
 
-    // Trả cái link thanh toán của Stripe về cho Frontend
     res.status(200).json({ success: true, url: session.url });
   } catch (error: any) {
-    console.error('Lỗi khi tạo Checkout Session:', error);
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+// API 2: LẮNG NGHE WEBHOOK TỪ STRIPE
+export const webhook = async (req: Request, res: Response): Promise<void> => {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2026-03-25.dahlia' });
+  const sig = req.headers['stripe-signature'] as string;
+  let event: any;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET as string);
+  } catch (err: any) {
+    res.status(400).send(`Webhook Error: ${err.message}`);
+    return;
+  }
+
+  // Bắt sự kiện thanh toán hoàn tất
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as any;
+    const userId = session.metadata?.userId;
+
+    console.log(`✅ [WEBHOOK] User ${userId} thanh toán thành công!`);
+    
+    // Nâng cấp tài khoản User trong DB lên PRO
+    if (userId) {
+      await User.findByIdAndUpdate(userId, { tier: 'PRO' }); // Hãy đảm bảo model User của bạn có trường 'tier'
+      console.log(`🚀 [SYSTEM] Đã nâng cấp tài khoản ${userId} lên POMAFINA PRO.`);
+    }
+  }
+
+  res.status(200).json({ received: true });
 };
