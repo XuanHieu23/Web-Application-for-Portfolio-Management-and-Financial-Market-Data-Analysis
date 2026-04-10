@@ -1,11 +1,15 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import Portfolio from '../models/portfolio.model';
 import Transaction from '../models/transaction.model';
-import { AuthRequest } from '../middlewares/auth.middleware'; 
 
-export const trade = async (req: AuthRequest, res: Response): Promise<void> => {
+export const trade = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id || (req.user as any)?._id; 
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const { coinSymbol, type, quantity, price } = req.body;
 
     if (!coinSymbol || !type || !quantity || !price) {
@@ -13,7 +17,6 @@ export const trade = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
 
-    // 1. Lưu vào Lịch sử
     const newTx = new Transaction({ 
       userId, 
       coinSymbol: coinSymbol.toUpperCase(), 
@@ -23,7 +26,6 @@ export const trade = async (req: AuthRequest, res: Response): Promise<void> => {
     });
     await newTx.save();
 
-    // 2. Cập nhật Số dư Ví (DCA Logic)
     let portfolioItem = await Portfolio.findOne({ userId, coinSymbol: coinSymbol.toUpperCase() });
 
     if (type === 'BUY') {
@@ -52,9 +54,14 @@ export const trade = async (req: AuthRequest, res: Response): Promise<void> => {
   }
 };
 
-export const getPortfolioSummary = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getPortfolioSummary = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id || (req.user as any)?._id;
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const portfolio = await Portfolio.find({ userId, quantity: { $gt: 0 } });
     
     const formattedData = portfolio.map(item => ({
@@ -69,9 +76,14 @@ export const getPortfolioSummary = async (req: AuthRequest, res: Response): Prom
   }
 };
 
-export const getTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getTransactions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id || (req.user as any)?._id;
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+
     const transactions = await Transaction.find({ userId }).sort({ timestamp: -1 });
     res.status(200).json({ success: true, data: transactions });
   } catch (error) {

@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.routes';
 import portfolioRoutes from './routes/portfolio.routes';
 import marketRoutes from './routes/market.routes';
 import paymentRoutes from './routes/payment.routes'; // THÊM ROUTE THANH TOÁN
+import aiRoutes from './routes/ai.routes'; 
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use(express.json()); // Đọc body dạng JSON cho các API khác
 app.use('/api/auth', authRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/market', marketRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('POMAFINA Financial Dashboard API is running...');

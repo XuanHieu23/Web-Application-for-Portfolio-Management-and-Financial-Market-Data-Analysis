@@ -1,13 +1,18 @@
 import { Request, Response } from 'express';
 import Stripe from 'stripe';
-import { AuthRequest } from '../middlewares/auth.middleware';
-import User from '../models/user.model'; // Nhớ import model User
+import User from '../models/user.model';
 
 // API 1: TẠO LINK THANH TOÁN
-export const createCheckoutSession = async (req: AuthRequest, res: Response): Promise<void> => {
+export const createCheckoutSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2026-03-25.dahlia' });
-    const userId = (req.user as any)?.id || (req.user as any)?._id;
+    
+    // Lấy userId an toàn 100% từ request
+    const userId = req.user?.id;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -24,7 +29,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
         },
         quantity: 1,
       }],
-      metadata: { userId: userId.toString() }, // Gắn thẻ ID để Webhook nhận diện
+      metadata: { userId }, // Gắn thẻ ID để Webhook nhận diện
       success_url: `${process.env.CLIENT_URL}/payment/success`,
       cancel_url: `${process.env.CLIENT_URL}/payment/cancelled`,
     });
@@ -39,7 +44,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response): Pr
 export const webhook = async (req: Request, res: Response): Promise<void> => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2026-03-25.dahlia' });
   const sig = req.headers['stripe-signature'] as string;
-  let event: any;
+  let event: any; // Chỗ này của Stripe webhook vẫn bắt buộc để any vì thư viện chưa update kịp Type
 
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET as string);
@@ -48,16 +53,14 @@ export const webhook = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  // Bắt sự kiện thanh toán hoàn tất
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as any;
     const userId = session.metadata?.userId;
 
     console.log(`✅ [WEBHOOK] User ${userId} thanh toán thành công!`);
     
-    // Nâng cấp tài khoản User trong DB lên PRO
     if (userId) {
-      await User.findByIdAndUpdate(userId, { tier: 'PRO' }); // Hãy đảm bảo model User của bạn có trường 'tier'
+      await User.findByIdAndUpdate(userId, { tier: 'PRO' });
       console.log(`🚀 [SYSTEM] Đã nâng cấp tài khoản ${userId} lên POMAFINA PRO.`);
     }
   }
