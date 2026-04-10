@@ -8,6 +8,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Portfolio } from './pages/Portfolio';
 // 1. IMPORT TRANG MARKET VÀO ĐÂY (Lưu ý tên export là Markets)
 import { Markets } from './pages/Market'; 
+import { TransactionHistory } from './pages/TransactionHistory';
 
 import { MainLayout } from './component/layout/MainLayout';
 import { ProtectedRoute } from './route/ProtectedRoute'; 
@@ -30,6 +31,7 @@ const App: React.FC = () => {
           <Route path="/portfolio" element={<Portfolio />} />
           {/* 2. THÊM ROUTE CHO MARKET VÀO ĐÂY */}
           <Route path="/markets" element={<Markets />} />
+          <Route path="/history" element={<TransactionHistory />} />
         </Route>
       </Routes>
     </Router>
