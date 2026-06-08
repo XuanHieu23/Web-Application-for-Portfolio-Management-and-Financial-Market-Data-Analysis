@@ -60,12 +60,59 @@ io.on('connection', (socket) => {
 
 setupBinanceSocket(io);
 
+// 🚨 BÍ KÍP SAAS: THEO DÕI VÀ ÉP CHẾT CÁC KẾT NỐI KEEP-ALIVE NGẦM
+const connections = new Set<import('net').Socket>();
+server.on('connection', (connection) => {
+  connections.add(connection);
+  connection.on('close', () => connections.delete(connection)); // Xóa khi kết nối tự đóng
+});
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/financial_dashboard';
 
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✅ Connected to MongoDB');
-    server.listen(PORT, () => console.log(`🚀 POMAFINA Backend is running on port ${PORT}`));
+    
+    const runningServer = server.listen(PORT, () => {
+      console.log(`🚀 POMAFINA Backend is running on port ${PORT}`);
+    });
+
+    // ==========================================
+    // 🚨 SHUTDOWN TRIỆT ĐỂ 100%
+    // ==========================================
+    const gracefulShutdown = () => {
+      console.log('\n🛑 [SYSTEM] Đang bóp cò hủy diệt các kết nối treo...');
+      
+      // 1. Phá hủy ngay lập tức toàn bộ các TCP Sockets đang ngủ đông (Keep-Alive)
+      for (const connection of connections) {
+        connection.destroy();
+      }
+
+      // 2. Đóng WebSocket
+      io.close();
+
+      // 3. Đóng Server & DB
+      runningServer.close(async () => {
+        try {
+          await mongoose.connection.close();
+          console.log('✅ Đã dọn sạch Port 5000 và nhả MongoDB.');
+          process.exit(0);
+        } catch (err) {
+          process.exit(1);
+        }
+      });
+
+      // Timeout ép chết sau 3 giây (Hard kill)
+      setTimeout(() => {
+        console.error('⚠️ Quá 3 giây! Ép buộc đóng tiến trình.');
+        process.exit(1);
+      }, 3000);
+    };
+
+    // Nodemon trên Windows sử dụng SIGUSR2 để báo hiệu Restart
+    process.once('SIGUSR2', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+    process.on('SIGTERM', gracefulShutdown);
   })
   .catch((err) => {
     console.error('❌ MongoDB connection error:', err);

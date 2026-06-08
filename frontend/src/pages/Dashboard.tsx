@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, BrainCircuit, Activity, Lock } from 'lucide-react';
 import { axiosClient } from '../services/axiosClient';
+import { Typewriter } from '../component/ui/TypeWriter';
+import { NotificationBanner } from '../component/ui/NotificationBanner';
 
 interface Holding {
   symbol: string;
@@ -12,21 +14,31 @@ export const Dashboard: React.FC = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  
+  // Banner thông báo lỗi thay cho alert
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
   const [loadingPayment, setLoadingPayment] = useState(false);
+  const [isPro, setIsPro] = useState(false);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [loadingAi, setLoadingAi] = useState(true);
+
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 5000);
+  };
 
   const handleUpgrade = async () => {
     try {
       setLoadingPayment(true);
-      // Gọi API đến Backend để xin link thanh toán Stripe
       const response = await axiosClient.post('/payment/create-checkout-session');
       
       if (response.data && response.data.url) {
-        // Phóng trình duyệt của user sang trang quẹt thẻ của Stripe
         window.location.href = response.data.url;
       }
     } catch (error) {
       console.error('Lỗi khởi tạo thanh toán:', error);
-      alert('Không thể kết nối đến Stripe. Hãy kiểm tra lại Backend và Terminal.');
+      showNotification('Không thể kết nối đến Stripe. Hãy kiểm tra lại Backend và Terminal.', 'error');
     } finally {
       setLoadingPayment(false);
     }
@@ -36,8 +48,9 @@ export const Dashboard: React.FC = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
+        // Luồng truyền thống: Gọi tuần tự và dùng localhost
         const summaryRes = await axiosClient.get('/portfolio/summary');
-        const summaryData = summaryRes.data.data || summaryRes.data;
+        const summaryData = summaryRes.data?.data || summaryRes.data;
         if (Array.isArray(summaryData)) setHoldings(summaryData);
 
         const priceRes = await fetch('http://localhost:5000/api/market/tickers');
@@ -55,7 +68,27 @@ export const Dashboard: React.FC = () => {
         setLoading(false);
       }
     };
+
+    const fetchAiInsight = async () => {
+      try {
+        const response = await axiosClient.get('/ai/insight');
+        if (response.data && response.data.success) {
+          setIsPro(true);
+          setAiInsight(response.data.insight);
+        }
+      } catch (error: any) {
+        if (error.response && error.response.status === 403) {
+          setIsPro(false);
+        } else {
+          console.error('Lỗi khi gọi AI:', error);
+        }
+      } finally {
+        setLoadingAi(false);
+      }
+    };
+
     fetchDashboardData();
+    fetchAiInsight();
   }, []);
 
   const totalInvested = holdings.reduce((acc, h) => acc + (h.amount * h.avgPrice), 0);
@@ -67,7 +100,19 @@ export const Dashboard: React.FC = () => {
   if (loading) return <div className="flex items-center justify-center h-full text-neon-cyan font-mono animate-pulse">SYNCING TERMINAL...</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      
+      {/* KHỐI HIỂN THỊ LỖI */}
+      {notification && (
+        <div className="fixed top-20 right-6 z-[100] animate-in fade-in slide-in-from-right-10">
+          <NotificationBanner 
+            message={notification.message} 
+            type={notification.type} 
+            onClose={() => setNotification(null)} 
+          />
+        </div>
+      )}
+
       {/* MACRO SUMMARY */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -97,7 +142,7 @@ export const Dashboard: React.FC = () => {
                 ))}
               </div>
             </div>
-            {/* SVG Line Chart Placeholder - Chuẩn bị cho Tuần 6 Charting */}
+            {/* SVG Line Chart Placeholder */}
             <div className="flex-1 border border-gray-800/50 rounded-xl flex flex-col items-center justify-center bg-gradient-to-t from-neon-cyan/5 to-transparent relative">
               <svg className="absolute inset-0 w-full h-full opacity-30" preserveAspectRatio="none" viewBox="0 0 100 100">
                 <path d="M0,100 L0,50 Q25,80 50,40 T100,20 L100,100 Z" fill="url(#grad)" />
@@ -115,7 +160,6 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: POMAFINA AI ORACLE */}
-        {/* RIGHT COLUMN: POMAFINA AI ORACLE (PAYWALL) */}
         <div className="space-y-6">
           <div className="bg-gradient-to-br from-[#151924] to-[#0A0D12] border border-neon-cyan/30 rounded-2xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.05)] h-[400px] flex flex-col">
             <div className="absolute top-0 right-0 w-40 h-40 bg-neon-cyan/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -125,36 +169,46 @@ export const Dashboard: React.FC = () => {
                 <BrainCircuit className="text-neon-cyan animate-pulse" size={24} />
                 <h3 className="text-white font-extrabold tracking-widest text-sm uppercase">AI Oracle</h3>
               </div>
-              <span className="text-[10px] bg-gray-800 text-gray-400 px-2 py-1 rounded font-bold border border-gray-700">FREE TIER</span>
+              <span className={`text-[10px] px-2 py-1 rounded font-bold border ${isPro ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/50' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+                {isPro ? 'PRO TIER' : 'FREE TIER'}
+              </span>
             </div>
 
-            {/* VÙNG BỊ LÀM MỜ VÌ CHƯA TRẢ TIỀN */}
             <div className="flex-1 bg-[#0B0E14] border border-gray-800 rounded-xl p-4 relative z-10 overflow-hidden flex flex-col items-center justify-center text-center">
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6">
-                <Lock className="text-neon-cyan mb-3" size={32} />
-                <h4 className="text-white font-bold text-sm mb-2">Premium Feature Locked</h4>
-                <p className="text-gray-400 text-xs mb-6 font-mono leading-relaxed">
-                  Unlock POMAFINA AI Oracle. Get personalized portfolio analysis powered by Groq and FinBERT market sentiment.
-                </p>
-                
-                {/* NÚT GỌI API THANH TOÁN */}
-                <button 
-                  onClick={handleUpgrade}
-                  disabled={loadingPayment}
-                  className="w-full py-3 bg-neon-cyan text-black rounded-lg text-sm font-bold hover:bg-[#00d0e0] hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {loadingPayment ? 'INITIALIZING SECURE LINK...' : 'UPGRADE TO PRO ($15/mo)'}
-                </button>
-              </div>
+              {loadingAi ? (
+                <div className="text-neon-cyan animate-pulse font-mono text-sm">SYNCING WITH NEURAL NET...</div>
+              ) : isPro ? (
+                <div className="w-full h-full text-left overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="text-gray-300 text-sm whitespace-pre-line">
+                    {aiInsight ? <Typewriter text={aiInsight} speed={30} /> : "Waiting for data anomalies..."}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6">
+                    <Lock className="text-neon-cyan mb-3" size={32} />
+                    <h4 className="text-white font-bold text-sm mb-2">Premium Feature Locked</h4>
+                    <p className="text-gray-400 text-xs mb-6 font-mono leading-relaxed">
+                      Unlock POMAFINA AI Oracle. Get personalized portfolio analysis powered by Groq and Llama-3.
+                    </p>
+                    
+                    <button 
+                      onClick={handleUpgrade}
+                      disabled={loadingPayment}
+                      className="w-full py-3 bg-neon-cyan text-black rounded-lg text-sm font-bold hover:bg-[#00d0e0] hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {loadingPayment ? 'INITIALIZING SECURE LINK...' : 'UPGRADE TO PRO ($15/mo)'}
+                    </button>
+                  </div>
 
-              {/* Dữ liệu giả lập mờ mờ ở dưới */}
-              <div className="opacity-30 space-y-4 w-full text-left">
-                <div className="h-4 bg-gray-800 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-800 rounded w-full"></div>
-                <div className="h-4 bg-gray-800 rounded w-5/6"></div>
-              </div>
+                  <div className="opacity-30 space-y-4 w-full text-left">
+                    <div className="h-4 bg-gray-800 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-800 rounded w-full"></div>
+                    <div className="h-4 bg-gray-800 rounded w-5/6"></div>
+                  </div>
+                </>
+              )}
             </div>
-
           </div>
         </div>
       </div>

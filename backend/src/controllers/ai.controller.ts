@@ -2,10 +2,9 @@ import { Request, Response } from 'express';
 import Portfolio from '../models/portfolio.model';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
 export const getPortfolioInsight = async (req: Request, res: Response): Promise<void> => {
   try {
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY as string });
     const currentUser = req.user; // Trực tiếp lấy từ req
 
     // TypeScript tự hiểu currentUser có thuộc tính tier
@@ -28,7 +27,7 @@ export const getPortfolioInsight = async (req: Request, res: Response): Promise<
         { role: "system", content: "You are POMAFINA AI, an expert crypto wealth manager. Analyze the user's portfolio and give short, actionable advice under 100 words." },
         { role: "user", content: `My portfolio: ${portfolioDetails}. Assessment?` }
       ],
-      model: "llama3-8b-8192",
+      model: "llama-3.1-8b-instant",
       temperature: 0.7,
     });
 

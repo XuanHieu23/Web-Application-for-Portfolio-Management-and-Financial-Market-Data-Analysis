@@ -14,3 +14,5 @@ build/
 # Bỏ qua các file rác của hệ điều hành
 .DS_Store
 Thumbs.db
+
+stripe.exe

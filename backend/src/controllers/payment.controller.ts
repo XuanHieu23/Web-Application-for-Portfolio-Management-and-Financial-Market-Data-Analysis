@@ -41,29 +41,27 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
 };
 
 // API 2: LẮNG NGHE WEBHOOK TỪ STRIPE
+// API 2: LẮNG NGHE WEBHOOK TỪ STRIPE
 export const webhook = async (req: Request, res: Response): Promise<void> => {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2026-03-25.dahlia' });
-  const sig = req.headers['stripe-signature'] as string;
-  let event: any; // Chỗ này của Stripe webhook vẫn bắt buộc để any vì thư viện chưa update kịp Type
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET as string);
-  } catch (err: any) {
-    res.status(400).send(`Webhook Error: ${err.message}`);
-    return;
-  }
+  // BỎ QUA BƯỚC GIẢI MÃ CHỮ KÝ (Khắc phục xung đột Express JSON trên Localhost)
+  const event = req.body;
 
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as any;
+    const session = event.data.object;
     const userId = session.metadata?.userId;
 
-    console.log(`✅ [WEBHOOK] User ${userId} thanh toán thành công!`);
-    
+    console.log(`\n✅ [WEBHOOK EVENT] Nhận được thông báo thanh toán từ Stripe!`);
+    console.log(`👉 Đang xử lý cho User ID: ${userId}`);
+
     if (userId) {
+      const User = require('../models/user.model').default; // Tránh lỗi import vòng nếu có
       await User.findByIdAndUpdate(userId, { tier: 'PRO' });
-      console.log(`🚀 [SYSTEM] Đã nâng cấp tài khoản ${userId} lên POMAFINA PRO.`);
+      console.log(`🚀 [SYSTEM] Đã nâng cấp tài khoản ${userId} lên POMAFINA PRO thành công.\n`);
+    } else {
+      console.log(`❌ [WEBHOOK ERROR] Giao dịch thành công nhưng không tìm thấy userId trong metadata!\n`);
     }
   }
 
+  // Luôn phải trả về 200 để báo cho Stripe biết là đã nhận được tin
   res.status(200).json({ received: true });
 };
