@@ -6,7 +6,8 @@ export interface IUser {
   username: string;
   email: string;
   password?: string;
-  tier: 'FREE' | 'PRO'; 
+  tier: 'FREE' | 'PRO';
+  avatar?: string;
   createdAt: Date;
   updatedAt: Date;
 }

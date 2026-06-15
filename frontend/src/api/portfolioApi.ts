@@ -4,7 +4,7 @@ import { API_ENDPOINTS } from './endpoints';
 export const portfolioApi = {
   // Hàm lấy danh sách ví
   getPortfolio: async () => {
-    const response = await axiosClient.get(API_ENDPOINTS.PORTFOLIO.GET_ALL);
+    const response = await axiosClient.get(API_ENDPOINTS.PORTFOLIO.SUMMARY);
     return response.data;
   },
 

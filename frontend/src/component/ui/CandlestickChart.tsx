@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { createChart, type Time } from 'lightweight-charts';
 import { POMAFINA_THEME } from '../../constants/theme';
 import { X } from 'lucide-react'; // Icon nút X để đóng
+import { axiosClient } from '../../services/axiosClient';
 
 // Định nghĩa Props: Nhận vào tên Coin và Hàm đóng cửa sổ
 interface CandlestickChartProps {
@@ -33,23 +34,21 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ symbol, onCl
     let isMounted = true;
 
     // LẤY DỮ LIỆU ĐÚNG ĐỒNG COIN ĐANG ĐƯỢC CHỌN
-    fetch(`http://localhost:5000/api/market/klines?symbol=${symbol}&interval=1d&limit=100`)
-      .then((res) => res.json())
-      .then((resData) => {
-        if (!isMounted) return;
-        
-        // Nhớ truy cập vào resData.data vì Backend của ta bọc kết quả trong field 'data'
-        const formattedData = resData.data.map((d: any) => ({
-          time: Math.floor(d[0] / 1000) as Time,
-          open: parseFloat(d[1]),
-          high: parseFloat(d[2]),
-          low: parseFloat(d[3]),
-          close: parseFloat(d[4]),
-        }));
-        candlestickSeries.setData(formattedData);
-        chart.timeScale().fitContent(); 
-      })
-      .catch(err => console.error('Lỗi tải dữ liệu nến từ Backend:', err));
+    axiosClient.get(`/market/klines?symbol=${symbol}&interval=1d&limit=100`)
+  .then((res) => {
+    if (!isMounted) return;
+    const resData = res.data; // axios lấy dữ liệu trong res.data
+    const formattedData = resData.data.map((d: any) => ({
+      time: Math.floor(d[0] / 1000) as Time,
+      open: parseFloat(d[1]),
+      high: parseFloat(d[2]),
+      low: parseFloat(d[3]),
+      close: parseFloat(d[4]),
+    }));
+    candlestickSeries.setData(formattedData);
+    chart.timeScale().fitContent(); 
+  })
+  .catch(err => console.error('Lỗi tải dữ liệu nến:', err));
 
     return () => {
       isMounted = false;

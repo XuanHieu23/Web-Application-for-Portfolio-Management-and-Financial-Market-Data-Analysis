@@ -9,11 +9,12 @@ const UserSchema: Schema = new Schema(
     username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    tier: { 
-      type: String, 
-      enum: ['FREE', 'PRO'], // Ngăn lưu bậy bạ vào DB
-      default: 'FREE' 
+    tier: {
+      type: String,
+      enum: ['FREE', 'PRO'],
+      default: 'FREE'
     },
+    avatar: { type: String, default: '' },
   },
   { timestamps: true }
 );

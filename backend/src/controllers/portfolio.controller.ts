@@ -17,14 +17,10 @@ export const trade = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const newTx = new Transaction({ 
-      userId, 
-      coinSymbol: coinSymbol.toUpperCase(), 
-      type, 
-      quantity: Number(quantity), 
-      price: Number(price) 
-    });
-    await newTx.save();
+    if (!['BUY', 'SELL'].includes(type)) {
+      res.status(400).json({ success: false, message: 'Invalid transaction type. Must be BUY or SELL.' });
+      return;
+    }
 
     let portfolioItem = await Portfolio.findOne({ userId, coinSymbol: coinSymbol.toUpperCase() });
 
@@ -45,6 +41,15 @@ export const trade = async (req: Request, res: Response): Promise<void> => {
       }
       portfolioItem.quantity -= Number(quantity);
     }
+
+    const newTx = new Transaction({
+      userId,
+      coinSymbol: coinSymbol.toUpperCase(),
+      type,
+      quantity: Number(quantity),
+      price: Number(price)
+    });
+    await newTx.save();
 
     if (portfolioItem) await portfolioItem.save();
     res.status(201).json({ success: true, message: 'Trade executed!' });

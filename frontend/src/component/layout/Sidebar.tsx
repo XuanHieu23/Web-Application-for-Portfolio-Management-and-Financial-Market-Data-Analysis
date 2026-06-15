@@ -5,18 +5,20 @@ import { LayoutDashboard, PieChart, Newspaper, Settings, Zap, LineChart } from '
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/home' },
   { name: 'Portfolio', icon: PieChart, href: '/portfolio' },
-  { name: 'AI Insights', icon: Newspaper, href: '/news' },
+  { name: 'Transaction History', icon: Newspaper, href: '/history' },
   { name: 'Markets', icon: LineChart, href: '/markets' },
 ];
 
 export const Sidebar: React.FC = () => {
   const [isHovered, setIsHovered] = useState(false);
-  const location = useLocation(); // Lấy đường dẫn hiện tại để check active
+  const location = useLocation();
 
   const isActive = (href: string) => {
     if (href === '/home') return location.pathname === '/home';
     return location.pathname.startsWith(href);
   };
+
+  const isSettingsActive = location.pathname === '/settings';
 
   return (
     <aside
@@ -41,7 +43,7 @@ export const Sidebar: React.FC = () => {
             text-white font-bold text-xl tracking-wider whitespace-nowrap overflow-hidden transition-all duration-300
             ${isHovered ? 'w-auto opacity-100' : 'w-0 opacity-0'}
           `}>
-            NEON EX
+            POMAFINA
           </span>
         </div>
       </div>
@@ -57,20 +59,19 @@ export const Sidebar: React.FC = () => {
               className={`
                 group flex items-center p-3 rounded-xl transition-all duration-300
                 ${isHovered ? 'justify-start space-x-4' : 'justify-center'}
-                ${active 
-                  ? 'bg-cyan-950/40 border border-neon-cyan/50 shadow-[0_0_15px_rgba(0,240,255,0.15)]' 
+                ${active
+                  ? 'bg-cyan-950/40 border border-neon-cyan/50 shadow-[0_0_15px_rgba(0,240,255,0.15)]'
                   : 'border border-transparent hover:bg-gray-800/50 hover:border-gray-700'
                 }
               `}
               title={!isHovered ? item.name : ''}
             >
               <div className="relative shrink-0">
-                <item.icon 
-                  size={22} 
-                  className={`transition-colors duration-300 ${active ? 'text-neon-cyan' : 'text-gray-400 group-hover:text-gray-200'}`} 
+                <item.icon
+                  size={22}
+                  className={`transition-colors duration-300 ${active ? 'text-neon-cyan' : 'text-gray-400 group-hover:text-gray-200'}`}
                 />
               </div>
-
               <div className={`
                 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out
                 ${isHovered ? 'w-40 opacity-100' : 'w-0 opacity-0'}
@@ -86,19 +87,31 @@ export const Sidebar: React.FC = () => {
 
       {/* Settings (Bottom) */}
       <div className="p-3 border-t border-gray-800 mt-auto">
-        <button className={`
-          group w-full flex items-center p-3 rounded-xl transition-all duration-300
-          border border-transparent hover:bg-gray-800/50 hover:border-gray-700
-          ${isHovered ? 'justify-start space-x-4' : 'justify-center'}
-        `}>
-          <Settings size={22} className="text-gray-400 group-hover:text-gray-200 shrink-0" />
+        <Link
+          to="/settings"
+          title={!isHovered ? 'Settings' : ''}
+          className={`
+            group w-full flex items-center p-3 rounded-xl transition-all duration-300
+            ${isHovered ? 'justify-start space-x-4' : 'justify-center'}
+            ${isSettingsActive
+              ? 'bg-cyan-950/40 border border-neon-cyan/50 shadow-[0_0_15px_rgba(0,240,255,0.15)]'
+              : 'border border-transparent hover:bg-gray-800/50 hover:border-gray-700'
+            }
+          `}
+        >
+          <Settings
+            size={22}
+            className={`shrink-0 transition-colors duration-300 ${isSettingsActive ? 'text-neon-cyan' : 'text-gray-400 group-hover:text-gray-200'}`}
+          />
           <div className={`
             whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out
             ${isHovered ? 'w-40 opacity-100' : 'w-0 opacity-0'}
           `}>
-            <span className="font-medium text-gray-400 group-hover:text-gray-200">Settings</span>
+            <span className={`font-medium ${isSettingsActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+              Settings
+            </span>
           </div>
-        </button>
+        </Link>
       </div>
     </aside>
   );

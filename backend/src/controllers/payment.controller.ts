@@ -2,12 +2,11 @@ import { Request, Response } from 'express';
 import Stripe from 'stripe';
 import User from '../models/user.model';
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2026-03-25.dahlia' });
+
 // API 1: TẠO LINK THANH TOÁN
 export const createCheckoutSession = async (req: Request, res: Response): Promise<void> => {
   try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2026-03-25.dahlia' });
-    
-    // Lấy userId an toàn 100% từ request
     const userId = req.user?.id;
     if (!userId) {
       res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -20,7 +19,7 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
       line_items: [{
         price_data: {
           currency: 'usd',
-          product_data: { 
+          product_data: {
             name: 'POMAFINA PRO Subscription',
             description: 'Unlock POMAFINA AI Oracle and Advanced Market Sentiment'
           },
@@ -29,7 +28,7 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
         },
         quantity: 1,
       }],
-      metadata: { userId }, // Gắn thẻ ID để Webhook nhận diện
+      metadata: { userId },
       success_url: `${process.env.CLIENT_URL}/payment/success`,
       cancel_url: `${process.env.CLIENT_URL}/payment/cancelled`,
     });
@@ -41,20 +40,35 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
 };
 
 // API 2: LẮNG NGHE WEBHOOK TỪ STRIPE
-// API 2: LẮNG NGHE WEBHOOK TỪ STRIPE
+// Yêu cầu: STRIPE_WEBHOOK_SECRET phải được set trong .env
+// Lấy webhook secret bằng lệnh: stripe listen --forward-to localhost:5000/api/payment/webhook
 export const webhook = async (req: Request, res: Response): Promise<void> => {
-  // BỎ QUA BƯỚC GIẢI MÃ CHỮ KÝ (Khắc phục xung đột Express JSON trên Localhost)
-  const event = req.body;
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    console.error('❌ [STRIPE] STRIPE_WEBHOOK_SECRET chưa được cấu hình trong .env');
+    res.status(500).json({ error: 'Webhook secret not configured on server.' });
+    return;
+  }
+
+  let event: ReturnType<typeof stripe.webhooks.constructEvent>;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
+  } catch (err: any) {
+    console.error('⚠️ [STRIPE] Webhook signature verification failed:', err.message);
+    res.status(400).json({ error: `Webhook Error: ${err.message}` });
+    return;
+  }
 
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+    const session = event.data.object as { metadata?: { userId?: string } };
     const userId = session.metadata?.userId;
 
     console.log(`\n✅ [WEBHOOK EVENT] Nhận được thông báo thanh toán từ Stripe!`);
     console.log(`👉 Đang xử lý cho User ID: ${userId}`);
 
     if (userId) {
-      const User = require('../models/user.model').default; // Tránh lỗi import vòng nếu có
       await User.findByIdAndUpdate(userId, { tier: 'PRO' });
       console.log(`🚀 [SYSTEM] Đã nâng cấp tài khoản ${userId} lên POMAFINA PRO thành công.\n`);
     } else {
@@ -62,6 +76,5 @@ export const webhook = async (req: Request, res: Response): Promise<void> => {
     }
   }
 
-  // Luôn phải trả về 200 để báo cho Stripe biết là đã nhận được tin
   res.status(200).json({ received: true });
 };

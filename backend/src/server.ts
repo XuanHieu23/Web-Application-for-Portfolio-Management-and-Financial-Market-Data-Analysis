@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-
+dotenv.config();
 // Import Services
 import { setupBinanceSocket } from './services/binanceSocket';
 
@@ -15,7 +15,6 @@ import marketRoutes from './routes/market.routes';
 import paymentRoutes from './routes/payment.routes'; // THÊM ROUTE THANH TOÁN
 import aiRoutes from './routes/ai.routes'; 
 
-dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;

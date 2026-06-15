@@ -3,6 +3,118 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/user.model';
 
+// LẤY THÔNG TIN USER HIỆN TẠI TỪ DB (dùng để sync tier sau payment)
+export const getMe = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) { res.status(401).json({ success: false, message: 'Unauthorized' }); return; }
+
+    const user = await User.findById(userId).select('id username email tier avatar');
+    if (!user) { res.status(404).json({ success: false, message: 'User not found.' }); return; }
+
+    res.status(200).json({
+      success: true,
+      user: { id: user.id, username: user.username, email: user.email, tier: user.tier, avatar: user.avatar }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// CẬP NHẬT HỒ SƠ (username + avatar)
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) { res.status(401).json({ success: false, message: 'Unauthorized' }); return; }
+
+    const { username, avatar } = req.body;
+
+    if (!username || username.trim().length < 2) {
+      res.status(400).json({ success: false, message: 'Username must be at least 2 characters.' });
+      return;
+    }
+
+    // Kiểm tra username đã được dùng bởi user khác chưa
+    const existing = await User.findOne({ username: username.trim(), _id: { $ne: userId } });
+    if (existing) {
+      res.status(400).json({ success: false, message: 'Username is already taken.' });
+      return;
+    }
+
+    // Giới hạn kích thước avatar base64 (~500KB)
+    if (avatar && avatar.length > 700_000) {
+      res.status(400).json({ success: false, message: 'Avatar image is too large. Max 500KB.' });
+      return;
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      userId,
+      { username: username.trim(), ...(avatar !== undefined && { avatar }) },
+      { new: true }
+    ).select('id username email tier avatar');
+
+    if (!updated) { res.status(404).json({ success: false, message: 'User not found.' }); return; }
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully.',
+      user: { id: updated.id, username: updated.username, email: updated.email, tier: updated.tier, avatar: updated.avatar }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// ĐỔI MẬT KHẨU
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) { res.status(401).json({ success: false, message: 'Unauthorized' }); return; }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ success: false, message: 'Please provide current and new password.' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
+      return;
+    }
+
+    const user = await User.findById(userId);
+    if (!user || !user.password) { res.status(404).json({ success: false, message: 'User not found.' }); return; }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      res.status(400).json({ success: false, message: 'Current password is incorrect.' });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.status(200).json({ success: true, message: 'Password changed successfully.' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// HỦY GÓI PRO
+export const cancelPro = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) { res.status(401).json({ success: false, message: 'Unauthorized' }); return; }
+
+    await User.findByIdAndUpdate(userId, { tier: 'FREE' });
+
+    res.status(200).json({ success: true, message: 'PRO subscription cancelled. You are now on the FREE plan.' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
 // ĐĂNG KÝ (REGISTER)
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {

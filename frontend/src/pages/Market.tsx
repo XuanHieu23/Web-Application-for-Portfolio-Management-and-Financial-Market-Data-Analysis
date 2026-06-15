@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { AlertTriangle, Zap, TrendingUp, Shield, Rocket } from 'lucide-react';
+import { TrendingUp, Shield, Rocket } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { CandlestickChart } from '../component/ui/CandlestickChart'; 
+import { axiosClient } from '../services/axiosClient';
 
 interface CoinData {
   symbol: string;
@@ -44,18 +45,30 @@ export const Markets: React.FC = () => {
   
   const [sparklineHistory, setSparklineHistory] = useState<Record<string, number[]>>({});
   const coinsRef = useRef<CoinData[]>([]);
+  
+  // State cho FinBERT AI
+  const [sentiment, setSentiment] = useState({
+    score: 50,
+    status: 'NEUTRAL',
+    loading: true
+  });
+
+  // State cho CoinGecko Global Data
+  const [globalData, setGlobalData] = useState({
+    marketCap: 0,
+    marketCapChange: 0,
+    btcDominance: 0,
+    loading: true
+  });
 
   useEffect(() => {
     let isMounted = true;
     
-    // 1. KÉO DỮ LIỆU TỪ BACKEND
-    fetch('http://localhost:5000/api/market/tickers')
-      .then(async (res) => {
-        if (!res.ok) throw new Error('Network response was not ok');
-        return res.json();
-      })
-      .then((resData) => {
+    // 1. KÉO DỮ LIỆU BẢNG GIÁ
+    axiosClient.get('/market/tickers')
+      .then((res) => {
         if (!isMounted) return;
+        const resData = res.data;
         setCoins(resData.data);
         coinsRef.current = resData.data;
 
@@ -71,43 +84,82 @@ export const Markets: React.FC = () => {
         if (isMounted) setLoading(false);
       });
 
-    // 2. KẾT NỐI WEBSOCKET
-    const socket = io('http://localhost:5000'); 
+    // 2. KẾT NỐI WEBSOCKET BINANCE
+    const baseUrl = import.meta.env.VITE_SOCKET_URL
+      || (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+    const socket = io(baseUrl);
 
     socket.on('MARKET_LIVE_DATA', (liveData: any[]) => {
-      if (coinsRef.current.length === 0) return; 
+      if (coinsRef.current.length === 0) return;
 
+      // Cập nhật coins và sparkline trong 2 setState riêng biệt — tránh React anti-pattern
       setCoins((prevCoins) => {
-        const newCoins = [...prevCoins];
         let hasChanges = false;
-
-        setSparklineHistory((prevHistory) => {
-          const newHistory = { ...prevHistory };
-
-          liveData.forEach((liveCoin) => {
-            const coinIndex = newCoins.findIndex(c => c.symbol === liveCoin.symbol);
-            if (coinIndex !== -1) {
-              const livePriceNum = parseFloat(liveCoin.price);
-              
-              if (newCoins[coinIndex].lastPrice !== liveCoin.price) {
-                newCoins[coinIndex].lastPrice = liveCoin.price;
-                hasChanges = true;
-              }
-
-              if (newHistory[liveCoin.symbol]) {
-                newHistory[liveCoin.symbol].push(livePriceNum);
-                if (newHistory[liveCoin.symbol].length > 15) {
-                  newHistory[liveCoin.symbol].shift(); 
-                }
-              }
-            }
-          });
-          return newHistory;
+        const newCoins = prevCoins.map(coin => {
+          const live = liveData.find(l => l.symbol === coin.symbol);
+          if (!live) return coin;
+          const priceChanged = coin.lastPrice !== live.price;
+          const changeChanged = live.priceChangePercent !== undefined && coin.priceChangePercent !== live.priceChangePercent;
+          if (!priceChanged && !changeChanged) return coin;
+          hasChanges = true;
+          return {
+            ...coin,
+            lastPrice: live.price,
+            priceChangePercent: live.priceChangePercent ?? coin.priceChangePercent,
+          };
         });
-
+        if (hasChanges) coinsRef.current = newCoins;
         return hasChanges ? newCoins : prevCoins;
       });
+
+      setSparklineHistory((prevHistory) => {
+        const newHistory = { ...prevHistory };
+        liveData.forEach((liveCoin) => {
+          if (newHistory[liveCoin.symbol]) {
+            const arr = newHistory[liveCoin.symbol];
+            newHistory[liveCoin.symbol] = [...arr.slice(-14), parseFloat(liveCoin.price)];
+          }
+        });
+        return newHistory;
+      });
     });
+
+    // 3. KÉO DỮ LIỆU FINBERT AI
+    const fetchSentiment = async () => {
+      try {
+        const res = await axiosClient.get('/ai/sentiment');
+        if (res.data && res.data.success && isMounted) {
+          setSentiment({
+            score: res.data.data.fearAndGreedIndex,
+            status: res.data.data.status,
+            loading: false
+          });
+        }
+      } catch (error) {
+        if (isMounted) setSentiment({ score: 50, status: 'ERROR', loading: false });
+      }
+    };
+
+    // 4. KÉO DỮ LIỆU VĨ MÔ TỪ BACKEND (Chuẩn kiến trúc Proxy)
+    const fetchGlobalData = async () => {
+      try {
+        const res = await axiosClient.get('/market/global'); // Gọi Backend của mình
+        if (res.data && res.data.success && isMounted) {
+          setGlobalData({
+            marketCap: res.data.data.marketCap,
+            marketCapChange: res.data.data.marketCapChange,
+            btcDominance: res.data.data.btcDominance,
+            loading: false
+          });
+        }
+      } catch (error) {
+        console.error('Lỗi lấy dữ liệu Global:', error);
+        if (isMounted) setGlobalData(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchSentiment();
+    fetchGlobalData();
 
     return () => {
       isMounted = false;
@@ -127,6 +179,14 @@ export const Markets: React.FC = () => {
     return num.toLocaleString();
   };
 
+  // Format cho số nghìn tỷ (Trillions) của Vốn hóa toàn cầu
+  const formatMarketCap = (val: number) => {
+    if (val === 0) return '---';
+    if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`;
+    if (val >= 1e9) return `$${(val / 1e9).toFixed(2)}B`;
+    return `$${val.toLocaleString()}`;
+  };
+
   return (
     <div className="flex flex-col xl:flex-row gap-6 relative">
       
@@ -136,7 +196,7 @@ export const Markets: React.FC = () => {
       )}
 
       {/* ==========================================
-          CỘT TRÁI: BẢNG DỮ LIỆU & TÍN HIỆU
+          CỘT TRÁI: BẢNG DỮ LIỆU (Đã xóa các thẻ tín hiệu giả)
           ========================================== */}
       <div className="flex-1 space-y-6">
         {/* Header */}
@@ -222,40 +282,6 @@ export const Markets: React.FC = () => {
             </tbody>
           </table>
         </div>
-
-        {/* Các thẻ tín hiệu thị trường (Trend Signal, Liquidations, Gas) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-          <div className="bg-neon-panel border border-gray-800 p-5 rounded-2xl flex flex-col justify-between hover:border-gray-700 transition-colors">
-             <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-blue-900/30 text-blue-400 rounded-lg"><Rocket size={20}/></div>
-               <span className="text-[10px] font-bold px-2 py-1 bg-green-950/50 text-neon-green rounded border border-neon-green/20">BULLISH</span>
-             </div>
-             <div>
-               <h4 className="text-white font-bold text-sm mb-1">Trend Signal</h4>
-               <p className="text-gray-400 text-xs leading-relaxed">Momentum is building in Layer 2 solutions. Average 24h volume up 14.2%.</p>
-             </div>
-          </div>
-          <div className="bg-neon-panel border border-gray-800 p-5 rounded-2xl flex flex-col justify-between hover:border-gray-700 transition-colors">
-             <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-red-900/30 text-neon-red rounded-lg"><AlertTriangle size={20}/></div>
-               <span className="text-[10px] font-bold px-2 py-1 bg-red-950/50 text-neon-red rounded border border-neon-red/20">HIGH RISK</span>
-             </div>
-             <div>
-               <h4 className="text-white font-bold text-sm mb-1">Liquidations</h4>
-               <p className="text-gray-400 text-xs leading-relaxed">$142M in shorts liquidated in the last 4 hours. Volatility expected.</p>
-             </div>
-          </div>
-          <div className="bg-neon-panel border border-gray-800 p-5 rounded-2xl flex flex-col justify-between hover:border-gray-700 transition-colors">
-             <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-cyan-900/30 text-neon-cyan rounded-lg"><Zap size={20}/></div>
-               <span className="text-[10px] font-bold px-2 py-1 bg-gray-800 text-gray-300 rounded border border-gray-700">STABLE</span>
-             </div>
-             <div>
-               <h4 className="text-white font-bold text-sm mb-1">Gas Tracker</h4>
-               <p className="text-gray-400 text-xs leading-relaxed">Ethereum network gas is currently 24 Gwei. Optimized for swaps.</p>
-             </div>
-          </div>
-        </div>
       </div>
 
       {/* ==========================================
@@ -269,8 +295,16 @@ export const Markets: React.FC = () => {
             <div>
               <p className="text-gray-500 text-xs font-semibold mb-1 uppercase tracking-wider">Global Cap</p>
               <div className="flex justify-between items-end">
-                <p className="text-2xl font-bold text-white tracking-tight">$2.48T</p>
-                <p className="text-neon-green text-sm font-mono">+1.2%</p>
+                {globalData.loading ? (
+                  <p className="text-white font-mono text-sm animate-pulse">Syncing...</p>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-white tracking-tight">{formatMarketCap(globalData.marketCap)}</p>
+                    <p className={`text-sm font-mono ${globalData.marketCapChange >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
+                      {globalData.marketCapChange >= 0 ? '+' : ''}{globalData.marketCapChange.toFixed(2)}%
+                    </p>
+                  </>
+                )}
               </div>
             </div>
             
@@ -279,26 +313,52 @@ export const Markets: React.FC = () => {
             <div>
               <p className="text-gray-500 text-xs font-semibold mb-1 uppercase tracking-wider">BTC Dominance</p>
               <div className="flex justify-between items-end">
-                <p className="text-2xl font-bold text-white tracking-tight">52.4%</p>
-                <p className="text-neon-red text-sm font-mono">-0.4%</p>
+                {globalData.loading ? (
+                  <p className="text-white font-mono text-sm animate-pulse">Syncing...</p>
+                ) : (
+                  <p className="text-2xl font-bold text-white tracking-tight">{globalData.btcDominance.toFixed(1)}%</p>
+                )}
               </div>
             </div>
 
             <div className="w-full h-[1px] bg-gray-800"></div>
 
+            {/* ĐỒNG HỒ TÂM LÝ THỊ TRƯỜNG AI */}
             <div className="pt-2">
                <p className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider text-center">Fear & Greed Index</p>
-               <div className="relative w-48 h-24 mx-auto overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-[200%] rounded-full border-[12px] border-gray-800 border-t-neon-green border-r-neon-green rotate-[-45deg]"></div>
-                  <div className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-end pb-2">
-                    <span className="text-3xl font-bold text-white">74</span>
-                    <span className="text-[10px] text-neon-green font-bold tracking-widest">GREED</span>
-                  </div>
-               </div>
+               
+               {sentiment.loading ? (
+                 <div className="text-center text-neon-cyan animate-pulse font-mono text-xs">ANALYZING NEWS...</div>
+               ) : (
+                 <div className="relative w-48 h-24 mx-auto overflow-hidden">
+                    <svg viewBox="0 0 100 50" className="w-full h-full drop-shadow-[0_0_10px_rgba(0,240,255,0.3)]">
+                      <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#1F2937" strokeWidth="12" />
+                      <path 
+                        d="M 10 50 A 40 40 0 0 1 90 50" 
+                        fill="none" 
+                        stroke={sentiment.score > 55 ? '#00FF9D' : sentiment.score < 45 ? '#FF3366' : '#00F0FF'} 
+                        strokeWidth="12" 
+                        strokeDasharray="125.6" 
+                        strokeDashoffset={125.6 - (125.6 * sentiment.score) / 100} 
+                        className="transition-all duration-1000 ease-out"
+                      />
+                    </svg>
+                    
+                    <div className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-end pb-1">
+                      <span className="text-3xl font-bold text-white leading-none mb-1">{sentiment.score}</span>
+                      <span className={`text-[10px] font-bold tracking-widest ${
+                        sentiment.score > 55 ? 'text-neon-green' : sentiment.score < 45 ? 'text-neon-red' : 'text-neon-cyan'
+                      }`}>
+                        {sentiment.status}
+                      </span>
+                    </div>
+                 </div>
+               )}
             </div>
           </div>
         </div>
 
+        {/* POMAFINA PRO CARD */}
         <div className="bg-gradient-to-br from-[#151924] to-[#0A0D12] border border-gray-800 p-6 rounded-2xl relative overflow-hidden group">
           <div className="absolute -right-10 -top-10 w-32 h-32 bg-neon-cyan/10 blur-[40px] rounded-full group-hover:bg-neon-cyan/20 transition-all duration-500"></div>
           <h4 className="text-white font-bold text-lg mb-2 relative z-10">POMAFINA <span className="text-neon-cyan">PRO</span></h4>
