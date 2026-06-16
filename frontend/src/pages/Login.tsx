@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, User, Zap, AlertCircle } from 'lucide-react';
 import { authApi } from '../api/authApi'; // Dùng API tập trung
 import { useAuthStore } from '../store/authStore'; // Dùng Store tập trung
 
 export const Login: React.FC = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
+  const [isLogin, setIsLogin] = useState(searchParams.get('mode') !== 'signup');
   const navigate = useNavigate();
   const loginAction = useAuthStore(state => state.login); // Lấy hàm login từ Zustand
 
@@ -82,7 +83,7 @@ export const Login: React.FC = () => {
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-neon-cyan to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.4)] mb-4">
             <Zap size={32} className="text-white" fill="white" />
           </div>
-          <h2 className="text-2xl font-bold tracking-wider">POMAFINA<span className="text-neon-cyan">.OBSIDIAN</span></h2>
+          <h2 className="text-2xl font-bold tracking-wider">POMAFINA</h2>
           <p className="text-gray-500 text-sm mt-1">{isLogin ? 'Access your terminal' : 'Initialize your node'}</p>
         </div>
 

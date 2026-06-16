@@ -131,36 +131,21 @@ export const Dashboard: React.FC = () => {
     };
 
     const fetchAiInsight = async () => {
-      const CACHE_KEY = 'pomafina_ai_insight';
-      const TTL_MS = 24 * 60 * 60 * 1000; // 24 giờ
+      // Free tier: không cần gọi API, khóa ngay (tier lấy từ user đã đăng nhập, không phải cache)
+      if (user?.tier !== 'PRO') {
+        setIsPro(false);
+        setLoadingAi(false);
+        return;
+      }
 
-      // Kiểm tra cache còn hạn
-      try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (raw) {
-          const { text, timestamp } = JSON.parse(raw) as { text: string; timestamp: number };
-          if (Date.now() - timestamp < TTL_MS) {
-            // Cache còn hạn → hiển thị ngay, không animate
-            setIsPro(true);
-            setAiInsight(text);
-            setAiInsightIsNew(false);
-            setLoadingAi(false);
-            return;
-          }
-          // Cache hết hạn → xóa và fetch mới
-          localStorage.removeItem(CACHE_KEY);
-        }
-      } catch { /* JSON parse lỗi → xóa cache xấu */ localStorage.removeItem(CACHE_KEY); }
-
-      // Fetch mới từ Groq
+      // Pro tier: luôn fetch insight mới cho đúng tài khoản đang đăng nhập
+      // (đánh đổi: viết lại insight mỗi lần vào trang, đổi lại không bị dính cache chéo tài khoản)
       try {
         const response = await axiosClient.get('/ai/insight');
         if (response.data?.success) {
-          const text = response.data.insight as string;
           setIsPro(true);
-          setAiInsight(text);
+          setAiInsight(response.data.insight as string);
           setAiInsightIsNew(true); // mới fetch → cho Typewriter chạy
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ text, timestamp: Date.now() }));
         }
       } catch (error: any) {
         if (error.response?.status === 403) setIsPro(false);

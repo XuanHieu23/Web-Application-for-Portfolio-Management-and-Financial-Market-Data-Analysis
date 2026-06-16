@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Search, Clock, Database, FileText } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ListFilter, ChevronDown, Clock, Database, FileText } from 'lucide-react';
 import { axiosClient } from '../services/axiosClient';
 
 interface Transaction {
@@ -14,6 +14,7 @@ interface Transaction {
 export const TransactionHistory: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [coinFilter, setCoinFilter] = useState('ALL');
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -43,6 +44,11 @@ export const TransactionHistory: React.FC = () => {
     });
   };
 
+  const coinOptions = Array.from(new Set(transactions.map(tx => tx.coinSymbol))).sort();
+  const filteredTransactions = coinFilter === 'ALL'
+    ? transactions
+    : transactions.filter(tx => tx.coinSymbol === coinFilter);
+
   return (
     <div className="space-y-6 relative">
       {/* HEADER */}
@@ -55,14 +61,20 @@ export const TransactionHistory: React.FC = () => {
           <p className="text-gray-400 text-sm">Cryptographically secured and immutable transaction history.</p>
         </div>
         
-        {/* THANH TÌM KIẾM (UI Demo) */}
-        <div className="relative w-full md:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-          <input 
-            type="text" 
-            placeholder="Search asset or ID..." 
-            className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-neon-cyan transition-colors"
-          />
+        {/* FILTER THEO ĐỒNG TIỀN */}
+        <div className="relative w-full md:w-56">
+          <ListFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
+          <select
+            value={coinFilter}
+            onChange={(e) => setCoinFilter(e.target.value)}
+            className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg pl-9 pr-9 py-2 text-sm focus:outline-none focus:border-neon-cyan transition-colors appearance-none cursor-pointer"
+          >
+            <option value="ALL">All Assets</option>
+            {coinOptions.map(symbol => (
+              <option key={symbol} value={symbol}>{symbol}</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
         </div>
       </div>
 
@@ -88,7 +100,7 @@ export const TransactionHistory: React.FC = () => {
                     DECRYPTING LEDGER ARCHIVES...
                   </td>
                 </tr>
-              ) : transactions.length === 0 ? (
+              ) : filteredTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-16 text-center text-gray-500 font-mono text-sm">
                     <Clock className="mx-auto mb-3 opacity-30" size={32} />
@@ -96,7 +108,7 @@ export const TransactionHistory: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                transactions.map((tx) => {
+                filteredTransactions.map((tx) => {
                   const isBuy = tx.type === 'BUY';
                   const totalValue = tx.quantity * tx.price;
 

@@ -118,8 +118,6 @@ export const Settings: React.FC = () => {
       const res = await axiosClient.put('/auth/cancel-pro');
       if (res.data?.success) {
         updateUser({ tier: 'FREE' });
-        // Xóa cache AI insight — user FREE không được xem nữa
-        localStorage.removeItem('pomafina_ai_insight');
         setCancelConfirm(false);
         showNotif('PRO subscription cancelled. You are now on the FREE plan.', 'success');
       }

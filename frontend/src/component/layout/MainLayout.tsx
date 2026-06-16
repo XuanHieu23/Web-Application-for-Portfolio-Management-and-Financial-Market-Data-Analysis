@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Search, User, LogOut } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { MarketTicker } from '../ui/MarketTicker';
 import { useAuthStore } from '../../store/authStore';
@@ -34,16 +34,7 @@ export const MainLayout: React.FC = () => {
       <main className="flex-1 flex flex-col relative overflow-hidden">
 
         {/* Header */}
-        <header className="h-16 border-b border-gray-800 bg-neon-panel/80 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-10 shrink-0">
-          <div className="relative w-64 md:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-            <input
-              type="text"
-              placeholder="Search Bitcoin, Ethereum..."
-              className="w-full bg-gray-900/50 border border-gray-700 text-sm rounded-full pl-10 pr-4 py-2 focus:outline-none focus:border-neon-cyan focus:shadow-[0_0_10px_rgba(0,240,255,0.2)] transition-all"
-            />
-          </div>
-
+        <header className="h-16 border-b border-gray-800 bg-neon-panel/80 backdrop-blur-xl flex items-center justify-end px-6 sticky top-0 z-10 shrink-0">
           <div className="flex items-center gap-4">
             {/* Live indicator */}
             <div className="flex items-center gap-2 text-neon-green text-sm px-3 py-1 bg-green-950/30 rounded-full border border-neon-green/30">

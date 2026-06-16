@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { TrendingUp, Shield, Rocket } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { CandlestickChart } from '../component/ui/CandlestickChart'; 
 import { axiosClient } from '../services/axiosClient';
@@ -42,6 +42,7 @@ export const Markets: React.FC = () => {
   const [coins, setCoins] = useState<CoinData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [sparklineHistory, setSparklineHistory] = useState<Record<string, number[]>>({});
   const coinsRef = useRef<CoinData[]>([]);
@@ -187,6 +188,10 @@ export const Markets: React.FC = () => {
     return `$${val.toLocaleString()}`;
   };
 
+  const filteredCoins = coins.filter(c =>
+    c.symbol.replace('USDT', '').toLowerCase().includes(searchQuery.trim().toLowerCase())
+  );
+
   return (
     <div className="flex flex-col xl:flex-row gap-6 relative">
       
@@ -205,16 +210,15 @@ export const Markets: React.FC = () => {
             <h1 className="text-3xl font-bold text-white mb-1">Market Screener</h1>
             <p className="text-gray-400 text-sm">Real-time intelligence across 2,400+ digital assets.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button className="flex items-center gap-2 px-4 py-2 bg-cyan-950/30 border border-neon-cyan/50 text-neon-cyan rounded-lg text-sm font-medium hover:bg-cyan-900/40 transition-colors">
-              <TrendingUp size={16} /> Top Gainers
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:border-gray-500 transition-colors">
-              <Shield size={16} /> DeFi
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:border-gray-500 transition-colors">
-              <Rocket size={16} /> L1 Assets
-            </button>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search Bitcoin, Ethereum..."
+              className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-neon-cyan transition-colors"
+            />
           </div>
         </div>
 
@@ -235,8 +239,12 @@ export const Markets: React.FC = () => {
                 <tr>
                   <td colSpan={5} className="p-10 text-center text-neon-cyan animate-pulse font-mono">Connecting to global nodes...</td>
                 </tr>
+              ) : filteredCoins.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-10 text-center text-gray-500 font-mono text-sm">No assets match "{searchQuery}"</td>
+                </tr>
               ) : (
-                coins.map((coin) => {
+                filteredCoins.map((coin) => {
                   const change = parseFloat(coin.priceChangePercent);
                   const isPositive = change >= 0;
                   const coinName = coin.symbol.replace('USDT', '');

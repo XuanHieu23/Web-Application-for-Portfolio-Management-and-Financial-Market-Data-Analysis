@@ -1,6 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, BarChart2, Cpu } from 'lucide-react';
+import { Activity, BarChart2, Cpu, Zap } from 'lucide-react';
+import { MarketTicker } from '../component/ui/MarketTicker';
+import dashboardScreenshot from '../assets/landing.png';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,23 +17,23 @@ export const LandingPage: React.FC = () => {
       {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto relative z-10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-neon-cyan to-blue-600 flex items-center justify-center font-bold text-black">
-            K
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-neon-cyan to-blue-600 flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.4)]">
+            <Zap size={18} className="text-white" fill="white" />
           </div>
-          <span className="text-xl font-bold tracking-wider">POMAFINA<span className="text-neon-cyan">.OBSIDIAN</span></span>
+          <span className="text-xl font-bold tracking-wider">POMAFINA</span>
         </div>
-        <div className="hidden md:flex gap-8 text-sm font-medium text-gray-400">
-          <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="#markets" className="hover:text-white transition-colors">Markets</a>
-          <a href="#pro" className="hover:text-neon-cyan transition-colors">Pro Oracle</a>
-        </div>
-        <button 
+        <button
           onClick={() => navigate('/login')}
           className="px-6 py-2.5 rounded-lg font-bold text-sm bg-gray-900 border border-gray-700 hover:border-neon-cyan hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all"
         >
           Access Terminal
         </button>
       </nav>
+
+      {/* Live Market Ticker (dữ liệu thật từ Binance qua WebSocket) */}
+      <div className="relative z-10">
+        <MarketTicker />
+      </div>
 
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-8 pt-20 pb-32 text-center relative z-10">
@@ -50,31 +52,29 @@ export const LandingPage: React.FC = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <button 
-            onClick={() => navigate('/login')}
+          <button
+            onClick={() => navigate('/login?mode=signup')}
             className="px-8 py-4 rounded-lg font-bold text-black bg-neon-cyan hover:bg-[#00d0e0] hover:shadow-[0_0_25px_rgba(0,240,255,0.5)] transition-all"
           >
             Start Tracking Free
           </button>
-          <button className="px-8 py-4 rounded-lg font-bold text-white bg-transparent border border-gray-700 hover:bg-gray-900 transition-all">
-            View Live Markets
-          </button>
         </div>
 
-        {/* Fake 3D Mockup Container (Giả lập màn hình UI bay lơ lửng) */}
+        {/* 3D App Mockup Container (Ảnh chụp màn hình Dashboard thật) */}
         <div className="mt-20 relative mx-auto max-w-5xl perspective-1000">
           <div className="w-full h-[400px] md:h-[600px] bg-neon-panel border border-gray-800 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden relative">
+             <img
+               src={dashboardScreenshot}
+               alt="POMAFINA Dashboard"
+               className="w-full h-full object-cover object-top"
+             />
              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0B0E14] z-10 pointer-events-none"></div>
-             {/* Bạn có thể chèn 1 ảnh chụp màn hình Dashboard thật vào đây sau */}
-             <div className="flex items-center justify-center h-full text-gray-600 border-dashed border-2 border-gray-800 m-8 rounded-xl">
-                [ 3D App Mockup Image Placeholder ]
-             </div>
           </div>
         </div>
       </main>
 
       {/* Feature Cards */}
-      <section id="features" className="max-w-7xl mx-auto px-8 py-20 grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+      <section className="max-w-7xl mx-auto px-8 py-20 grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
         <div className="bg-gray-900/50 border border-gray-800 p-8 rounded-2xl backdrop-blur-sm hover:border-gray-600 transition-colors">
           <BarChart2 className="text-neon-cyan mb-4" size={32} />
           <h3 className="text-xl font-bold mb-2">Real-time Analytics</h3>
