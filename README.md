@@ -36,9 +36,9 @@
 |---|---|
 | Scattered assets across multiple exchanges | A centralized dashboard aggregating total Net Worth and PnL |
 | Static charts with delayed pricing | Native **Binance WebSocket** integration for sub-second live price updates |
-| Overwhelming market news and noise | Automated **Fear & Greed Index** powered by Mistral AI analyzing real-time RSS headlines |
+| Overwhelming market news and noise | Automated **Fear & Greed Index** powered by Groq AI analyzing real-time RSS headlines |
 | Lack of personalized portfolio strategy | **AI Oracle** powered by Groq (Llama-3.1) providing instant, tailored investment insights |
-| Clunky and unresponsive UI | A sleek, Neon-themed **Dark Mode UI** with smooth Recharts visualizations |
+| Clunky and unresponsive UI | A sleek, Neon-themed **Dark Mode UI** with smooth ECharts & Recharts visualizations |
 
 ---
 
@@ -55,8 +55,8 @@
   - Interactive **Donut Charts** for precise Asset Allocation breakdowns.
 
 ### AI Productivity & Market Intelligence
-- **AI Oracle (Groq/Llama-3.1):** Premium feature that scans the user's current holdings and delivers actionable, sub-100-word wealth management advice via high-speed LPU inference.
-- **Macro Sentiment Analysis:** Fetches real-time RSS news from CoinTelegraph and uses Mistral AI to generate a live Crypto Fear & Greed Index in strict JSON format.
+- **AI Oracle (Groq/Llama-3.1):** Premium feature that scans the user's current holdings and delivers actionable, sub-100-word wealth management advice via high-speed LPU inference. *(PRO only)*
+- **Macro Sentiment Analysis:** Fetches real-time RSS news from CoinTelegraph and uses Groq AI (Llama-3.1) to generate a live Crypto Fear & Greed Index in strict JSON format. *(All tiers)*
 
 ### Authentication & Billing
 - Secure JWT-based Authentication (Login/Register).
@@ -70,18 +70,23 @@
 | Technology | Purpose |
 |---|---|
 | **Node.js + Express.js** | High-performance REST API server |
+| **TypeScript** | Type-safe backend codebase (ts-node) |
 | **MongoDB + Mongoose** | NoSQL database for flexible user and portfolio schemas |
 | **JSON Web Token (JWT)** | Stateless, secure authentication |
 | **Stripe API** | Payment gateway & Webhook handling for subscriptions |
-| **Groq Cloud SDK** | Ultra-fast Llama-3.1 inference for AI Oracle |
-| **OpenRouter** | Mistral API routing for Market Sentiment analysis |
+| **Groq Cloud SDK** | Ultra-fast Llama-3.1 inference for AI Oracle & Market Sentiment |
 
 ### Frontend
 | Technology | Purpose |
 |---|---|
 | **React.js (Vite)** | Lightning-fast component-based SPA |
+| **TypeScript** | Type-safe frontend codebase |
 | **Tailwind CSS** | Utility-first styling (Custom Neon Dark Theme) |
 | **Recharts** | Responsive SVG charts (AreaChart, PieChart) |
+| **ECharts (echarts-for-react)** | Advanced charting for portfolio area visualization |
+| **Lightweight Charts** | High-performance candlestick charts for Market page |
+| **Zustand** | Lightweight global state management (auth store) |
+| **react-hook-form + Zod** | Performant form handling with schema validation |
 | **Socket.io-client / Native WS** | Handling internal broadcasts and Binance live data streams |
 | **Axios** | HTTP client with global interceptors for auth tokens |
 
@@ -171,7 +176,6 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PREMIUM_PRICE_ID=price_...
 
 GROQ_API_KEY=gsk_...
-OPENROUTER_API_KEY=sk-or-v1-...
 
 CLIENT_URL=http://localhost:5173
 ```
