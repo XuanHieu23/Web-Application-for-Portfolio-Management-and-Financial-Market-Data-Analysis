@@ -17,7 +17,6 @@ interface AuthState {
   updateUser: (partial: Partial<User>) => void;
 }
 
-// ĐÃ FIX: Hàm tự bóc tách JWT để kiểm tra thời hạn trên Frontend
 const checkTokenValidity = () => {
   const token = localStorage.getItem('token');
   if (!token) return false;
@@ -27,7 +26,7 @@ const checkTokenValidity = () => {
     if (payload.exp * 1000 < Date.now()) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      return false; 
+      return false;
     }
     return true;
   } catch (error) {
@@ -37,10 +36,10 @@ const checkTokenValidity = () => {
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: localStorage.getItem('token'),
-  // ĐÃ FIX: Chạy hàm check thật sự thay vì chỉ !!localStorage
+
   isAuthenticated: checkTokenValidity(),
   user: JSON.parse(localStorage.getItem('user') || 'null'),
-  
+
   login: (token: string, user: User) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));

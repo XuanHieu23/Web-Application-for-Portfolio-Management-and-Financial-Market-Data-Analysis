@@ -3,7 +3,116 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/user.model';
 
-// LẤY THÔNG TIN USER HIỆN TẠI TỪ DB (dùng để sync tier sau payment)
+/**
+ * @desc    Register a new user account with hashed password
+ * @route   POST /auth/signup
+ * @access  Public
+ */
+export const register = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+      res.status(400).json({ success: false, message: 'Please provide all required fields.' });
+      return;
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    const existingUser = await User.findOne({
+      $or: [{ email: normalizedEmail }, { username }]
+    });
+
+    if (existingUser) {
+      const isEmailTaken = existingUser.email === normalizedEmail;
+      res.status(400).json({
+        success: false,
+        message: isEmailTaken ? 'Email already exists.' : 'Username is already taken.'
+      });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = new User({
+      username,
+      email: normalizedEmail,
+      password: hashedPassword,
+    });
+
+    await newUser.save();
+
+    res.status(201).json({ success: true, message: 'User registered successfully!' });
+  } catch (error: any) {
+    console.error('Registration Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error during registration.' });
+  }
+};
+
+/**
+ * @desc    Authenticate user credentials and return a signed JWT token (7d expiry)
+ * @route   POST /auth/login
+ * @access  Public
+ */
+export const login = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({ success: false, message: 'Please provide email and password.' });
+      return;
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found.' });
+      return;
+    }
+
+    if (!user.password) {
+      res.status(400).json({
+        success: false,
+        message: 'Legacy account detected. Please create a new account — the DB schema has changed.'
+      });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      res.status(400).json({ success: false, message: 'Invalid credentials.' });
+      return;
+    }
+
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        tier: user.tier
+      }
+    });
+  } catch (error: any) {
+    console.error('Login Error:', error);
+    res.status(500).json({ success: false, message: 'Server Error during login.' });
+  }
+};
+
+/**
+ * @desc    Return the authenticated user's profile data
+ * @route   GET /auth/me
+ * @access  Private
+ */
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -21,7 +130,11 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// CẬP NHẬT HỒ SƠ (username + avatar)
+/**
+ * @desc    Update the authenticated user's username and/or avatar (base64)
+ * @route   PUT /auth/profile
+ * @access  Private
+ */
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -34,14 +147,12 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Kiểm tra username đã được dùng bởi user khác chưa
     const existing = await User.findOne({ username: username.trim(), _id: { $ne: userId } });
     if (existing) {
       res.status(400).json({ success: false, message: 'Username is already taken.' });
       return;
     }
 
-    // Giới hạn kích thước avatar base64 (~500KB)
     if (avatar && avatar.length > 700_000) {
       res.status(400).json({ success: false, message: 'Avatar image is too large. Max 500KB.' });
       return;
@@ -65,7 +176,11 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-// ĐỔI MẬT KHẨU
+/**
+ * @desc    Verify current password then replace it with a new bcrypt-hashed password
+ * @route   PUT /auth/change-password
+ * @access  Private
+ */
 export const changePassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -101,7 +216,11 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
   }
 };
 
-// HỦY GÓI PRO
+/**
+ * @desc    Downgrade the authenticated user's tier from PRO to FREE
+ * @route   PUT /auth/cancel-pro
+ * @access  Private
+ */
 export const cancelPro = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -112,113 +231,5 @@ export const cancelPro = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({ success: true, message: 'PRO subscription cancelled. You are now on the FREE plan.' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error.' });
-  }
-};
-
-// ĐĂNG KÝ (REGISTER)
-export const register = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { username, email, password } = req.body;
-
-    // 1. Kiểm tra đầu vào
-    if (!username || !email || !password) {
-      res.status(400).json({ success: false, message: 'Please provide all required fields.' });
-      return;
-    }
-
-    // ĐÃ FIX: Chuẩn hóa email về chữ thường để tránh lỗi viết hoa/thường
-    const normalizedEmail = email.toLowerCase();
-
-    // 2. ĐÃ FIX: Kiểm tra xem Email HOẶC Username đã tồn tại chưa
-    const existingUser = await User.findOne({
-      $or: [{ email: normalizedEmail }, { username }]
-    });
-
-    if (existingUser) {
-      const isEmailTaken = existingUser.email === normalizedEmail;
-      res.status(400).json({ 
-        success: false, 
-        message: isEmailTaken ? 'Email already exists.' : 'Username is already taken.' 
-      });
-      return;
-    }
-
-    // 3. Mã hóa mật khẩu
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // 4. Lưu vào Database (Lưu email chữ thường)
-    const newUser = new User({
-      username,
-      email: normalizedEmail,
-      password: hashedPassword,
-    });
-
-    await newUser.save();
-
-    res.status(201).json({ success: true, message: 'User registered successfully!' });
-  } catch (error: any) {
-    console.error('Registration Error:', error);
-    res.status(500).json({ success: false, message: 'Server Error during registration.' });
-  }
-};
-
-// ĐĂNG NHẬP (LOGIN)
-export const login = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      res.status(400).json({ success: false, message: 'Please provide email and password.' });
-      return;
-    }
-
-    // ĐÃ FIX: Chuyển email người dùng nhập vào thành chữ thường để tìm kiếm
-    const normalizedEmail = email.toLowerCase();
-
-    // 1. Tìm user theo email
-    const user = await User.findOne({ email: normalizedEmail });
-    if (!user) {
-      res.status(404).json({ success: false, message: 'User not found.' });
-      return;
-    }
-
-    // 2. Chặn lỗi sập server do tài khoản cũ (Legacy Check)
-    if (!user.password) {
-      res.status(400).json({  
-        success: false, 
-        message: 'Legacy account error. Vui lòng tạo tài khoản mới do cấu trúc DB đã thay đổi!' 
-      });
-      return;
-    }
-
-    // 3. So sánh mật khẩu
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      res.status(400).json({ success: false, message: 'Invalid credentials.' });
-      return;
-    }
-
-    // 4. Tạo Token (Sống 7 ngày)
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '7d' } 
-    );
-
-    // 5. Trả về thông tin
-    res.status(200).json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        tier: user.tier
-      }
-    });
-  } catch (error: any) {
-    console.error('Login Error:', error);
-    res.status(500).json({ success: false, message: 'Server Error during login.' });
   }
 };

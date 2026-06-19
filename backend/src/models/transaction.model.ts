@@ -5,14 +5,14 @@ export interface ITransaction extends Document {
   coinSymbol: string;
   type: 'BUY' | 'SELL';
   quantity: number;
-  price: number; // Giá của 1 đồng coin tại thời điểm khớp lệnh
+  price: number;
   timestamp: Date;
 }
 
 const TransactionSchema: Schema = new Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    coinSymbol: { type: String, required: true, trim: true, uppercase: true }, // uppercase để đồng bộ mã coin (VD: btc -> BTC)
+    coinSymbol: { type: String, required: true, trim: true, uppercase: true },
     type: { type: String, enum: ['BUY', 'SELL'], required: true },
     quantity: { type: Number, required: true, min: [0, 'Quantity cannot be negative'] },
     price: { type: Number, required: true, min: [0, 'Price cannot be negative'] },
@@ -21,7 +21,6 @@ const TransactionSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-// Tạo Index ghép để tăng tốc độ truy vấn khi User muốn xem lịch sử của 1 đồng coin cụ thể
 TransactionSchema.index({ userId: 1, coinSymbol: 1, timestamp: -1 });
 
 export default mongoose.model<ITransaction>('Transaction', TransactionSchema);

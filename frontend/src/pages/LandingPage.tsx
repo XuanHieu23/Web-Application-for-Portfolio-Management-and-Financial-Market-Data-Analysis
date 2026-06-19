@@ -9,12 +9,10 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0B0E14] text-white font-sans overflow-x-hidden selection:bg-neon-cyan selection:text-black">
-      
-      {/* Background Effects */}
+
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-neon-cyan/20 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/20 blur-[120px] rounded-full pointer-events-none"></div>
 
-      {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto relative z-10">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-neon-cyan to-blue-600 flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.4)]">
@@ -30,23 +28,21 @@ export const LandingPage: React.FC = () => {
         </button>
       </nav>
 
-      {/* Live Market Ticker (dữ liệu thật từ Binance qua WebSocket) */}
       <div className="relative z-10">
         <MarketTicker />
       </div>
 
-      {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-8 pt-20 pb-32 text-center relative z-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/30 border border-neon-cyan/30 text-neon-cyan text-xs font-bold mb-8">
           <span className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse"></span>
           System v2.0 is Live
         </div>
-        
+
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-tight">
-          Master Your Wealth <br/> 
+          Master Your Wealth <br/>
           With <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan to-blue-500">AI Precision</span>
         </h1>
-        
+
         <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
           The ultimate Web3 terminal for portfolio management. Track assets, analyze market data, and get personalized insights from the POMAFINA AI Oracle.
         </p>
@@ -60,7 +56,6 @@ export const LandingPage: React.FC = () => {
           </button>
         </div>
 
-        {/* 3D App Mockup Container (Ảnh chụp màn hình Dashboard thật) */}
         <div className="mt-20 relative mx-auto max-w-5xl perspective-1000">
           <div className="w-full h-[400px] md:h-[600px] bg-neon-panel border border-gray-800 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden relative">
              <img
@@ -73,7 +68,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </main>
 
-      {/* Feature Cards */}
       <section className="max-w-7xl mx-auto px-8 py-20 grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
         <div className="bg-gray-900/50 border border-gray-800 p-8 rounded-2xl backdrop-blur-sm hover:border-gray-600 transition-colors">
           <BarChart2 className="text-neon-cyan mb-4" size={32} />

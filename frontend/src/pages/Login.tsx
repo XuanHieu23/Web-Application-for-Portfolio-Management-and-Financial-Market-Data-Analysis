@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, User, Zap, AlertCircle } from 'lucide-react';
-import { authApi } from '../api/authApi'; // Dùng API tập trung
-import { useAuthStore } from '../store/authStore'; // Dùng Store tập trung
+import { axiosClient } from '../services/axiosClient';
+import { useAuthStore } from '../store/authStore';
 
 export const Login: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(searchParams.get('mode') !== 'signup');
   const navigate = useNavigate();
-  const loginAction = useAuthStore(state => state.login); // Lấy hàm login từ Zustand
+  const loginAction = useAuthStore(state => state.login);
 
   const [formData, setFormData] = useState({ username: '', email: '', password: '' });
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; general?: string }>({});
@@ -17,7 +17,7 @@ export const Login: React.FC = () => {
   const validateForm = () => {
     const newErrors: any = {};
     if (!isLogin && !formData.username.trim()) newErrors.name = 'Username is required';
-    
+
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -36,31 +36,30 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return; 
+    if (!validateForm()) return;
 
     setLoading(true);
-    setErrors({}); 
+    setErrors({});
 
     try {
       if (isLogin) {
-        // LUỒNG 1: ĐĂNG NHẬP
-        const response = await authApi.login({ email: formData.email, password: formData.password });
-        
-        if (response.success && response.token) {
-          // Giao việc lưu token và user cho Zustand Store xử lý, KHÔNG dùng localStorage chay
-          loginAction(response.token, response.user);
-          navigate('/home'); 
+
+        const { data } = await axiosClient.post('/auth/login', { email: formData.email, password: formData.password });
+
+        if (data.success && data.token) {
+          loginAction(data.token, data.user);
+          navigate('/home');
         }
       } else {
-        // LUỒNG 2: ĐĂNG KÝ
-        const response = await authApi.signup({ 
-          username: formData.username, 
-          email: formData.email, 
-          password: formData.password 
+
+        const { data } = await axiosClient.post('/auth/signup', {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password
         });
 
-        if (response.success) {
-          setIsLogin(true); // Thành công thì lật sang form đăng nhập
+        if (data.success) {
+          setIsLogin(true);
           setFormData({ username: '', email: formData.email, password: '' });
           setErrors({ general: 'Registration successful! Please sign in.' });
         }
@@ -76,9 +75,9 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0B0E14] text-white flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-neon-cyan/10 blur-[120px] rounded-full pointer-events-none"></div>
-      
+
       <div className="w-full max-w-md bg-[#151924]/80 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative z-10">
-        
+
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-neon-cyan to-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.4)] mb-4">
             <Zap size={32} className="text-white" fill="white" />
@@ -100,8 +99,8 @@ export const Login: React.FC = () => {
               <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">UserName</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors ${errors.name ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
@@ -116,8 +115,8 @@ export const Login: React.FC = () => {
             <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">Email Address</label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors font-mono text-sm ${errors.email ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
@@ -133,8 +132,8 @@ export const Login: React.FC = () => {
             </div>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input 
-                type="password" 
+              <input
+                type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors font-mono text-sm ${errors.password ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
@@ -144,8 +143,8 @@ export const Login: React.FC = () => {
             {errors.password && <p className="text-neon-red text-xs mt-1.5 ml-1">{errors.password}</p>}
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="w-full py-3.5 mt-2 bg-neon-cyan text-black rounded-xl text-sm font-bold tracking-wide hover:bg-[#00d0e0] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50"
           >
@@ -155,12 +154,12 @@ export const Login: React.FC = () => {
 
         <div className="mt-8 text-center text-sm text-gray-500">
           {isLogin ? "Don't have an access key? " : "Already initialized? "}
-          <button 
+          <button
             type="button"
             onClick={() => {
               setIsLogin(!isLogin);
               setErrors({});
-            }} 
+            }}
             className="text-neon-cyan font-bold hover:underline"
           >
             {isLogin ? 'Request Access' : 'Sign In'}

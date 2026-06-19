@@ -13,7 +13,6 @@ export const MainLayout: React.FC = () => {
 
   const initials = (user?.username || 'U').slice(0, 2).toUpperCase();
 
-  // Đóng dropdown khi click ra ngoài
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -27,23 +26,18 @@ export const MainLayout: React.FC = () => {
   return (
     <div className="flex h-screen bg-neon-bg text-white font-sans overflow-hidden">
 
-      {/* Sidebar */}
-      <Sidebar />
+            <Sidebar />
 
-      {/* Main content */}
-      <main className="flex-1 flex flex-col relative overflow-hidden">
+            <main className="flex-1 flex flex-col relative overflow-hidden">
 
-        {/* Header */}
-        <header className="h-16 border-b border-gray-800 bg-neon-panel/80 backdrop-blur-xl flex items-center justify-end px-6 sticky top-0 z-10 shrink-0">
+                <header className="h-16 border-b border-gray-800 bg-neon-panel/80 backdrop-blur-xl flex items-center justify-end px-6 sticky top-0 z-10 shrink-0">
           <div className="flex items-center gap-4">
-            {/* Live indicator */}
-            <div className="flex items-center gap-2 text-neon-green text-sm px-3 py-1 bg-green-950/30 rounded-full border border-neon-green/30">
+                        <div className="flex items-center gap-2 text-neon-green text-sm px-3 py-1 bg-green-950/30 rounded-full border border-neon-green/30">
               <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse"></div>
               Live
             </div>
 
-            {/* Avatar + Dropdown */}
-            <div className="relative" ref={dropdownRef}>
+                        <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(prev => !prev)}
                 className="flex items-center gap-2.5 group"
@@ -61,11 +55,9 @@ export const MainLayout: React.FC = () => {
                 )}
               </button>
 
-              {/* Dropdown */}
-              {dropdownOpen && (
+                            {dropdownOpen && (
                 <div className="absolute right-0 top-[calc(100%+10px)] w-52 bg-[#0F1218] border border-gray-700 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden z-50">
-                  {/* User info header */}
-                  <div className="px-4 py-3 border-b border-gray-800">
+                                    <div className="px-4 py-3 border-b border-gray-800">
                     <p className="text-white font-bold text-sm truncate">{user?.username}</p>
                     <p className="text-gray-500 text-xs truncate">{user?.email}</p>
                     <span className={`inline-block mt-1.5 text-[10px] font-bold tracking-widest px-2 py-0.5 rounded border ${
@@ -77,8 +69,7 @@ export const MainLayout: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Menu items */}
-                  <div className="py-1.5">
+                                    <div className="py-1.5">
                     <button
                       onClick={() => { setDropdownOpen(false); navigate('/settings'); }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800/60 hover:text-white transition-colors"
@@ -100,13 +91,11 @@ export const MainLayout: React.FC = () => {
           </div>
         </header>
 
-        {/* Market Ticker */}
-        <div className="shrink-0 border-b border-gray-800">
+                <div className="shrink-0 border-b border-gray-800">
           <MarketTicker />
         </div>
 
-        {/* Page content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
           <Outlet />
         </div>
 

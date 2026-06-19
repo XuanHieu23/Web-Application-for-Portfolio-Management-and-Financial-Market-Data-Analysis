@@ -21,12 +21,12 @@ export const TransactionHistory: React.FC = () => {
       try {
         const res = await axiosClient.get('/portfolio/transactions');
         if (res.data && res.data.success) {
-          // Xử lý cả 2 trường hợp: Backend trả về mảng trực tiếp hoặc trả về object có phân trang
+
           const txData = Array.isArray(res.data.data) ? res.data.data : (res.data.data?.docs || []);
           setTransactions(txData);
         }
       } catch (error) {
-        console.error('Lỗi tải lịch sử giao dịch:', error);
+        console.error('Failed to load transaction history:', error);
       } finally {
         setLoading(false);
       }
@@ -35,7 +35,7 @@ export const TransactionHistory: React.FC = () => {
   }, []);
 
   const formatCurrency = (val: number) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -51,7 +51,7 @@ export const TransactionHistory: React.FC = () => {
 
   return (
     <div className="space-y-6 relative">
-      {/* HEADER */}
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-1 flex items-center gap-3">
@@ -60,8 +60,7 @@ export const TransactionHistory: React.FC = () => {
           </h1>
           <p className="text-gray-400 text-sm">Cryptographically secured and immutable transaction history.</p>
         </div>
-        
-        {/* FILTER THEO ĐỒNG TIỀN */}
+
         <div className="relative w-full md:w-56">
           <ListFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
           <select
@@ -78,7 +77,6 @@ export const TransactionHistory: React.FC = () => {
         </div>
       </div>
 
-      {/* BẢNG LỊCH SỬ GIAO DỊCH */}
       <div className="bg-neon-panel border border-gray-800 rounded-2xl overflow-hidden shadow-lg backdrop-blur-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
@@ -128,8 +126,8 @@ export const TransactionHistory: React.FC = () => {
                       </td>
                       <td className="p-5">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold border ${
-                          isBuy 
-                            ? 'bg-green-950/40 text-neon-green border-neon-green/30' 
+                          isBuy
+                            ? 'bg-green-950/40 text-neon-green border-neon-green/30'
                             : 'bg-red-950/40 text-neon-red border-neon-red/30'
                         }`}>
                           {isBuy ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}

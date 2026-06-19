@@ -4,9 +4,18 @@ import { verifyToken } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
-// Chỉ ai có token đăng nhập mới được gọi API này
+/**
+ * @desc    Analyze the user's portfolio and return investment suggestions via Groq AI
+ * @route   GET /ai/insight
+ * @access  Private (PRO only)
+ */
 router.get('/insight', verifyToken, getPortfolioInsight);
-// AI 2: Phân tích tâm lý thị trường (FinBERT - Dành cho mọi user)
+
+/**
+ * @desc    Analyze overall crypto market sentiment from latest news via Groq AI
+ * @route   GET /ai/sentiment
+ * @access  Private (PRO only)
+ */
 router.get('/sentiment', verifyToken, getMarketSentiment);
 
 export default router;

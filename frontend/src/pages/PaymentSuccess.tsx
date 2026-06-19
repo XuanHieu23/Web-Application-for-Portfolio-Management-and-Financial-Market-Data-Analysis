@@ -17,7 +17,7 @@ export const PaymentSuccess: React.FC = () => {
       try {
         const res = await axiosClient.get('/auth/me');
         if (res.data?.success && res.data.user?.tier === 'PRO') {
-          // Cập nhật toàn bộ user info từ DB vào store + localStorage
+
           updateUser({
             tier: 'PRO',
             username: res.data.user.username,
@@ -27,19 +27,18 @@ export const PaymentSuccess: React.FC = () => {
           setSyncing(false);
           return;
         }
-      } catch { /* tiếp tục retry */ }
+      } catch {  }
 
       attempts++;
       if (attempts < MAX_ATTEMPTS) {
-        // Webhook chưa kịp xử lý — thử lại sau 2 giây
+
         setTimeout(syncTier, 2000);
       } else {
-        // Hết retry — có thể webhook delay, vẫn cho vào dashboard
+
         setSyncing(false);
       }
     };
 
-    // Bắt đầu sau 1 giây (cho webhook xử lý)
     const timer = setTimeout(syncTier, 1000);
     return () => clearTimeout(timer);
   }, []);

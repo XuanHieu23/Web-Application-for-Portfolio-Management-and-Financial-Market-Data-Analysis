@@ -17,7 +17,6 @@ export const Settings: React.FC = () => {
     setTimeout(() => setNotif(null), 4000);
   };
 
-  // ─── TAB 1: PROFILE ────────────────────────────────────────────────────────
   const [username, setUsername] = useState(user?.username || '');
   const [avatarPreview, setAvatarPreview] = useState<string>(user?.avatar || '');
   const [avatarBase64, setAvatarBase64] = useState<string | undefined>(undefined);
@@ -26,17 +25,15 @@ export const Settings: React.FC = () => {
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    // Reset input để có thể chọn lại cùng file
+
     e.target.value = '';
     if (!file) return;
 
-    // Kiểm tra định dạng
     if (!file.type.startsWith('image/')) {
       showNotif('Invalid file type. Please upload a JPG, PNG, or WebP image.', 'error');
       return;
     }
 
-    // Kiểm tra kích thước (500KB)
     if (file.size > 500_000) {
       showNotif(`File too large (${(file.size / 1024).toFixed(0)}KB). Maximum allowed size is 500KB.`, 'error');
       return;
@@ -53,7 +50,7 @@ export const Settings: React.FC = () => {
 
   const handleRemoveAvatar = () => {
     setAvatarPreview('');
-    setAvatarBase64(''); // chuỗi rỗng = xóa avatar, khác undefined = không thay đổi
+    setAvatarBase64('');
   };
 
   const handleProfileSave = async (e: React.FormEvent) => {
@@ -76,7 +73,6 @@ export const Settings: React.FC = () => {
     }
   };
 
-  // ─── TAB 2: PASSWORD ───────────────────────────────────────────────────────
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [pwLoading, setPwLoading] = useState(false);
 
@@ -108,7 +104,6 @@ export const Settings: React.FC = () => {
     }
   };
 
-  // ─── TAB 3: SUBSCRIPTION ──────────────────────────────────────────────────
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
 
@@ -138,8 +133,7 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-10">
-      {/* Notification */}
-      {notif && (
+            {notif && (
         <div className={`fixed top-20 right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl border text-sm font-medium shadow-lg animate-in fade-in slide-in-from-right-10 ${
           notif.type === 'success'
             ? 'bg-green-950/80 border-neon-green/40 text-neon-green'
@@ -150,14 +144,12 @@ export const Settings: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div>
+            <div>
         <p className="text-gray-500 font-bold tracking-widest text-xs mb-1 uppercase">Account</p>
         <h1 className="text-3xl font-extrabold text-white tracking-tight">Settings</h1>
       </div>
 
-      {/* Tab Bar */}
-      <div className="flex gap-2 bg-[#0B0E14] border border-gray-800 rounded-xl p-1.5">
+            <div className="flex gap-2 bg-[#0B0E14] border border-gray-800 rounded-xl p-1.5">
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -174,13 +166,11 @@ export const Settings: React.FC = () => {
         ))}
       </div>
 
-      {/* ── TAB: PROFILE ── */}
-      {activeTab === 'profile' && (
+            {activeTab === 'profile' && (
         <div className="bg-neon-panel border border-gray-800 rounded-2xl p-8">
           <h2 className="text-white font-bold text-sm tracking-widest uppercase mb-6">Profile Information</h2>
           <form onSubmit={handleProfileSave} className="space-y-6">
-            {/* Avatar */}
-            <div className="flex flex-col items-center gap-4">
+                        <div className="flex flex-col items-center gap-4">
               <div className="relative group">
                 {avatarPreview ? (
                   <img
@@ -193,16 +183,14 @@ export const Settings: React.FC = () => {
                     <span className="text-2xl font-extrabold text-neon-cyan">{initials}</span>
                   </div>
                 )}
-                {/* Overlay camera khi hover */}
-                <button
+                                <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                 >
                   <Camera size={22} className="text-white" />
                 </button>
-                {/* Nút xóa avatar — chỉ hiện khi có ảnh */}
-                {avatarPreview && (
+                                {avatarPreview && (
                   <button
                     type="button"
                     onClick={handleRemoveAvatar}
@@ -230,8 +218,7 @@ export const Settings: React.FC = () => {
               <p className="text-gray-600 text-xs font-mono">JPG, PNG, WebP — max 500KB</p>
             </div>
 
-            {/* Username */}
-            <div>
+                        <div>
               <label className="block text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-2">Username</label>
               <input
                 type="text"
@@ -242,8 +229,7 @@ export const Settings: React.FC = () => {
               />
             </div>
 
-            {/* Email (read-only) */}
-            <div>
+                        <div>
               <label className="block text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-2">Email Address</label>
               <input
                 type="email"
@@ -265,8 +251,7 @@ export const Settings: React.FC = () => {
         </div>
       )}
 
-      {/* ── TAB: PASSWORD ── */}
-      {activeTab === 'password' && (
+            {activeTab === 'password' && (
         <div className="bg-neon-panel border border-gray-800 rounded-2xl p-8">
           <h2 className="text-white font-bold text-sm tracking-widest uppercase mb-6">Change Password</h2>
           <form onSubmit={handlePasswordChange} className="space-y-5">
@@ -326,11 +311,9 @@ export const Settings: React.FC = () => {
         </div>
       )}
 
-      {/* ── TAB: SUBSCRIPTION ── */}
-      {activeTab === 'subscription' && (
+            {activeTab === 'subscription' && (
         <div className="space-y-4">
-          {/* Current plan card */}
-          <div className={`bg-neon-panel border rounded-2xl p-8 ${user?.tier === 'PRO' ? 'border-neon-cyan/30' : 'border-gray-800'}`}>
+                    <div className={`bg-neon-panel border rounded-2xl p-8 ${user?.tier === 'PRO' ? 'border-neon-cyan/30' : 'border-gray-800'}`}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-white font-bold text-sm tracking-widest uppercase">Current Plan</h2>
               <span className={`text-xs px-3 py-1.5 rounded-lg font-bold border ${
@@ -345,7 +328,7 @@ export const Settings: React.FC = () => {
             {user?.tier === 'PRO' ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {['AI Oracle — Portfolio Analysis', 'FinBERT Market Sentiment', 'Unlimited Trade History', 'Priority Support'].map(feat => (
+                  {['AI Oracle — Portfolio Analysis', 'FinBERT Market Sentiment', 'Priority Support'].map(feat => (
                     <div key={feat} className="flex items-center gap-2 text-sm text-gray-300">
                       <CheckCircle size={15} className="text-neon-cyan shrink-0" />
                       {feat}
@@ -366,8 +349,7 @@ export const Settings: React.FC = () => {
             )}
           </div>
 
-          {/* Cancel section — only show for PRO */}
-          {user?.tier === 'PRO' && (
+                    {user?.tier === 'PRO' && (
             <div className="bg-neon-panel border border-red-900/40 rounded-2xl p-8">
               <div className="flex items-center gap-3 mb-4">
                 <ShieldOff size={20} className="text-red-400" />

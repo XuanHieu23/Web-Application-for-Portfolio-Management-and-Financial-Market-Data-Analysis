@@ -7,7 +7,7 @@ function connect(io: SocketIOServer): void {
   const binanceWs = new WebSocket('wss://stream.binance.com:443/ws/!miniTicker@arr');
 
   binanceWs.on('error', (error) => {
-    console.error('⚠️ [Cảnh báo] Lỗi kết nối WebSocket tới Binance:', error.message);
+    console.error('⚠️ [Warning] Binance WebSocket connection error:', error.message);
   });
 
   binanceWs.on('open', () => {
@@ -28,12 +28,12 @@ function connect(io: SocketIOServer): void {
 
       io.emit('MARKET_LIVE_DATA', optimizedData);
     } catch (error) {
-      console.error('Lỗi khi parse dữ liệu Socket:', error);
+      console.error('Failed to parse WebSocket data:', error);
     }
   });
 
   binanceWs.on('close', () => {
-    console.log(`❌ Backend mất kết nối với Binance, thử lại sau ${RECONNECT_DELAY_MS / 1000}s...`);
+    console.log(`❌ Binance WebSocket disconnected — reconnecting in ${RECONNECT_DELAY_MS / 1000}s...`);
     setTimeout(() => connect(io), RECONNECT_DELAY_MS);
   });
 }

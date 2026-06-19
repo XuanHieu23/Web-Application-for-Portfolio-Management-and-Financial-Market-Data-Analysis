@@ -4,10 +4,18 @@ import { verifyToken } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
-// User gọi để lấy link thanh toán (Phải đăng nhập)
+/**
+ * @desc    Create a Stripe Checkout session to upgrade to PRO plan
+ * @route   POST /payment/create-checkout-session
+ * @access  Private
+ */
 router.post('/create-checkout-session', verifyToken, createCheckoutSession);
 
-// Stripe gọi để báo thanh toán thành công (Bắt buộc dùng express.raw)
+/**
+ * @desc    Receive and handle Stripe webhook events (e.g. checkout.session.completed)
+ * @route   POST /payment/webhook
+ * @access  Public (Stripe signature verified internally)
+ */
 router.post('/webhook', express.raw({ type: 'application/json' }), webhook);
 
 export default router;

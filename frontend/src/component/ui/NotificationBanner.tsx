@@ -13,13 +13,13 @@ export const NotificationBanner: React.FC<NotificationProps> = ({ message, type,
   return (
     <div className={`
       flex items-center gap-4 px-5 py-4 rounded-xl border backdrop-blur-xl shadow-2xl min-w-[320px]
-      ${isSuccess 
-        ? 'bg-green-950/40 border-neon-green/50 text-neon-green shadow-neon-green/10' 
+      ${isSuccess
+        ? 'bg-green-950/40 border-neon-green/50 text-neon-green shadow-neon-green/10'
         : 'bg-red-950/40 border-neon-red/50 text-neon-red shadow-neon-red/10'
       }
     `}>
       {isSuccess ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-      
+
       <div className="flex-1">
         <p className="text-xs font-bold tracking-widest uppercase mb-0.5">
           {isSuccess ? 'System.Success' : 'System.Error'}

@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { io } from 'socket.io-client';
-import { CandlestickChart } from '../component/ui/CandlestickChart'; 
+import { CandlestickChart } from '../component/ui/CandlestickChart';
 import { axiosClient } from '../services/axiosClient';
+import { getSocketUrl } from '../services/socketUrl';
 
 interface CoinData {
   symbol: string;
@@ -11,16 +12,14 @@ interface CoinData {
   quoteVolume: string;
 }
 
-// Hàm khởi tạo data ảo cho biểu đồ khi mới load
 const initializeSparkline = (currentPrice: number) => {
   return Array.from({ length: 15 }).fill(currentPrice) as number[];
 };
 
-// COMPONENT SVG SIÊU TỐC ĐỘ 
 const Sparkline = ({ data, color }: { data: number[], color: string }) => {
   const min = Math.min(...data);
   const max = Math.max(...data);
-  const range = max - min || 1; 
+  const range = max - min || 1;
   const width = 120;
   const height = 40;
   const padding = 4;
@@ -43,18 +42,16 @@ export const Markets: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [sparklineHistory, setSparklineHistory] = useState<Record<string, number[]>>({});
   const coinsRef = useRef<CoinData[]>([]);
-  
-  // State cho FinBERT AI
+
   const [sentiment, setSentiment] = useState({
     score: 50,
     status: 'NEUTRAL',
     loading: true
   });
 
-  // State cho CoinGecko Global Data
   const [globalData, setGlobalData] = useState({
     marketCap: 0,
     marketCapChange: 0,
@@ -64,8 +61,7 @@ export const Markets: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    
-    // 1. KÉO DỮ LIỆU BẢNG GIÁ
+
     axiosClient.get('/market/tickers')
       .then((res) => {
         if (!isMounted) return;
@@ -81,19 +77,15 @@ export const Markets: React.FC = () => {
         setLoading(false);
       })
       .catch(err => {
-        console.error('Lỗi khởi tạo Market:', err);
+        console.error('Failed to initialize market data:', err);
         if (isMounted) setLoading(false);
       });
 
-    // 2. KẾT NỐI WEBSOCKET BINANCE
-    const baseUrl = import.meta.env.VITE_SOCKET_URL
-      || (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
-    const socket = io(baseUrl);
+    const socket = io(getSocketUrl());
 
     socket.on('MARKET_LIVE_DATA', (liveData: any[]) => {
       if (coinsRef.current.length === 0) return;
 
-      // Cập nhật coins và sparkline trong 2 setState riêng biệt — tránh React anti-pattern
       setCoins((prevCoins) => {
         let hasChanges = false;
         const newCoins = prevCoins.map(coin => {
@@ -125,7 +117,6 @@ export const Markets: React.FC = () => {
       });
     });
 
-    // 3. KÉO DỮ LIỆU FINBERT AI
     const fetchSentiment = async () => {
       try {
         const res = await axiosClient.get('/ai/sentiment');
@@ -141,10 +132,9 @@ export const Markets: React.FC = () => {
       }
     };
 
-    // 4. KÉO DỮ LIỆU VĨ MÔ TỪ BACKEND (Chuẩn kiến trúc Proxy)
     const fetchGlobalData = async () => {
       try {
-        const res = await axiosClient.get('/market/global'); // Gọi Backend của mình
+        const res = await axiosClient.get('/market/global');
         if (res.data && res.data.success && isMounted) {
           setGlobalData({
             marketCap: res.data.data.marketCap,
@@ -154,7 +144,7 @@ export const Markets: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error('Lỗi lấy dữ liệu Global:', error);
+        console.error('Failed to fetch global market data:', error);
         if (isMounted) setGlobalData(prev => ({ ...prev, loading: false }));
       }
     };
@@ -180,7 +170,6 @@ export const Markets: React.FC = () => {
     return num.toLocaleString();
   };
 
-  // Format cho số nghìn tỷ (Trillions) của Vốn hóa toàn cầu
   const formatMarketCap = (val: number) => {
     if (val === 0) return '---';
     if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`;
@@ -194,17 +183,13 @@ export const Markets: React.FC = () => {
 
   return (
     <div className="flex flex-col xl:flex-row gap-6 relative">
-      
-      {/* POPUP BIỂU ĐỒ NẾN */}
+
       {selectedSymbol && (
         <CandlestickChart symbol={selectedSymbol} onClose={() => setSelectedSymbol(null)} />
       )}
 
-      {/* ==========================================
-          CỘT TRÁI: BẢNG DỮ LIỆU (Đã xóa các thẻ tín hiệu giả)
-          ========================================== */}
       <div className="flex-1 space-y-6">
-        {/* Header */}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white mb-1">Market Screener</h1>
@@ -222,7 +207,6 @@ export const Markets: React.FC = () => {
           </div>
         </div>
 
-        {/* Bảng giá */}
         <div className="bg-neon-panel border border-gray-800 rounded-2xl overflow-hidden shadow-lg backdrop-blur-sm">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -248,13 +232,13 @@ export const Markets: React.FC = () => {
                   const change = parseFloat(coin.priceChangePercent);
                   const isPositive = change >= 0;
                   const coinName = coin.symbol.replace('USDT', '');
-                  
+
                   const historyData = sparklineHistory[coin.symbol] || initializeSparkline(parseFloat(coin.lastPrice));
                   const strokeColor = isPositive ? '#00FF9D' : '#FF3366';
 
                   return (
-                    <tr 
-                      key={coin.symbol} 
+                    <tr
+                      key={coin.symbol}
                       onClick={() => setSelectedSymbol(coin.symbol)}
                       className="hover:bg-gray-800/40 transition-colors group cursor-pointer"
                     >
@@ -292,13 +276,10 @@ export const Markets: React.FC = () => {
         </div>
       </div>
 
-      {/* ==========================================
-          CỘT PHẢI: MARKET OVERVIEW (SIDEBAR)
-          ========================================== */}
       <div className="w-full xl:w-80 space-y-6 shrink-0">
         <div className="bg-neon-panel border border-gray-800 rounded-2xl p-6">
           <h3 className="text-neon-cyan font-bold text-sm tracking-widest uppercase mb-6">Market Overview</h3>
-          
+
           <div className="space-y-6">
             <div>
               <p className="text-gray-500 text-xs font-semibold mb-1 uppercase tracking-wider">Global Cap</p>
@@ -315,7 +296,7 @@ export const Markets: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="w-full h-[1px] bg-gray-800"></div>
 
             <div>
@@ -331,27 +312,26 @@ export const Markets: React.FC = () => {
 
             <div className="w-full h-[1px] bg-gray-800"></div>
 
-            {/* ĐỒNG HỒ TÂM LÝ THỊ TRƯỜNG AI */}
             <div className="pt-2">
                <p className="text-gray-500 text-xs font-semibold mb-4 uppercase tracking-wider text-center">Fear & Greed Index</p>
-               
+
                {sentiment.loading ? (
                  <div className="text-center text-neon-cyan animate-pulse font-mono text-xs">ANALYZING NEWS...</div>
                ) : (
                  <div className="relative w-48 h-24 mx-auto overflow-hidden">
                     <svg viewBox="0 0 100 50" className="w-full h-full drop-shadow-[0_0_10px_rgba(0,240,255,0.3)]">
                       <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#1F2937" strokeWidth="12" />
-                      <path 
-                        d="M 10 50 A 40 40 0 0 1 90 50" 
-                        fill="none" 
-                        stroke={sentiment.score > 55 ? '#00FF9D' : sentiment.score < 45 ? '#FF3366' : '#00F0FF'} 
-                        strokeWidth="12" 
-                        strokeDasharray="125.6" 
-                        strokeDashoffset={125.6 - (125.6 * sentiment.score) / 100} 
+                      <path
+                        d="M 10 50 A 40 40 0 0 1 90 50"
+                        fill="none"
+                        stroke={sentiment.score > 55 ? '#00FF9D' : sentiment.score < 45 ? '#FF3366' : '#00F0FF'}
+                        strokeWidth="12"
+                        strokeDasharray="125.6"
+                        strokeDashoffset={125.6 - (125.6 * sentiment.score) / 100}
                         className="transition-all duration-1000 ease-out"
                       />
                     </svg>
-                    
+
                     <div className="absolute bottom-0 left-0 w-full flex flex-col items-center justify-end pb-1">
                       <span className="text-3xl font-bold text-white leading-none mb-1">{sentiment.score}</span>
                       <span className={`text-[10px] font-bold tracking-widest ${
@@ -366,17 +346,6 @@ export const Markets: React.FC = () => {
           </div>
         </div>
 
-        {/* POMAFINA PRO CARD */}
-        <div className="bg-gradient-to-br from-[#151924] to-[#0A0D12] border border-gray-800 p-6 rounded-2xl relative overflow-hidden group">
-          <div className="absolute -right-10 -top-10 w-32 h-32 bg-neon-cyan/10 blur-[40px] rounded-full group-hover:bg-neon-cyan/20 transition-all duration-500"></div>
-          <h4 className="text-white font-bold text-lg mb-2 relative z-10">POMAFINA <span className="text-neon-cyan">PRO</span></h4>
-          <p className="text-gray-400 text-xs leading-relaxed mb-6 relative z-10">
-            Unlock institutional-grade order flow analytics and MEV protection.
-          </p>
-          <button className="w-full py-3 bg-gray-900 border border-gray-700 text-white rounded-lg text-sm font-bold hover:border-neon-cyan hover:shadow-[0_0_15px_rgba(0,240,255,0.2)] transition-all relative z-10">
-            UPGRADE TERMINAL
-          </button>
-        </div>
       </div>
 
     </div>

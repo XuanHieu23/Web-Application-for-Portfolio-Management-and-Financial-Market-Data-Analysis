@@ -7,8 +7,8 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  // Lấy trạng thái xác thực ĐÃ ĐƯỢC KIỂM CHỨNG từ Zustand
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated); 
+
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

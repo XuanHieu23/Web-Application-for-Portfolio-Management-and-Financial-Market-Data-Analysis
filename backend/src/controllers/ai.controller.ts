@@ -3,15 +3,18 @@ import Portfolio from '../models/portfolio.model';
 import Groq from 'groq-sdk';
 import axios from 'axios';
 
-// KHỞI TẠO GROQ Ở PHẠM VI TOÀN CỤC ĐỂ DÙNG CHUNG CHO CẢ 2 API
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY as string });
 
-// ========================================================
-// [GET] API 1: Phân tích danh mục đầu tư bằng Groq AI (Giữ nguyên)
-// ========================================================
+/**
+ * @desc    Generate a personalized portfolio analysis using Groq AI (llama-3.1-8b-instant).
+ *          Reads the user's current holdings, builds a prompt, and returns actionable advice.
+ *          Restricted to PRO tier users only.
+ * @route   GET /ai/insight
+ * @access  Private (PRO only)
+ */
 export const getPortfolioInsight = async (req: Request, res: Response): Promise<void> => {
   try {
-    const currentUser = req.user; 
+    const currentUser = req.user;
 
     if (!currentUser || currentUser.tier !== 'PRO') {
       res.status(403).json({ success: false, message: 'Premium Feature. Please upgrade to POMAFINA PRO.' });
@@ -19,7 +22,7 @@ export const getPortfolioInsight = async (req: Request, res: Response): Promise<
     }
 
     const portfolio = await Portfolio.find({ userId: currentUser.id, quantity: { $gt: 0 } });
-    
+
     if (portfolio.length === 0) {
       res.status(200).json({ success: true, insight: "Your portfolio is empty. Add assets for analysis." });
       return;
@@ -44,16 +47,20 @@ export const getPortfolioInsight = async (req: Request, res: Response): Promise<
   }
 };
 
-// ========================================================
-// [GET] API 2: Phân tích tâm lý vĩ mô - ĐÃ ĐỒNG BỘ CHUYỂN SANG GROQ
-// ========================================================
+/**
+ * @desc    Scrape the latest 5 headlines from CoinTelegraph RSS, then use Groq AI to return
+ *          a structured JSON with a Fear & Greed index, overall status, and per-headline sentiment.
+ *          Restricted to PRO tier users only.
+ * @route   GET /ai/sentiment
+ * @access  Private (PRO only)
+ */
 export const getMarketSentiment = async (req: Request, res: Response): Promise<void> => {
   try {
-    // 1. Kéo tin tức real-time từ CoinTelegraph RSS
+
     const newsResponse = await axios.get('https://api.rss2json.com/v1/api.json?rss_url=https://cointelegraph.com/rss');
-    
+
     if (newsResponse.data?.status !== 'ok' || !Array.isArray(newsResponse.data?.items)) {
-      throw new Error("Lỗi nguồn cấp tin từ CoinTelegraph.");
+      throw new Error("Failed to fetch news feed from CoinTelegraph.");
     }
 
     const headlines = newsResponse.data.items.slice(0, 5).map((item: any) => item.title);
@@ -76,21 +83,19 @@ export const getMarketSentiment = async (req: Request, res: Response): Promise<v
       }
     `;
 
-    // 2. Gọi trực tiếp qua Groq Cloud - Không qua trung gian OpenRouter nữa
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         { role: "user", content: prompt }
       ],
       model: "llama-3.1-8b-instant",
-      temperature: 0.1, // Giảm tối đa độ sáng tạo để AI bám sát cấu trúc dữ liệu
-      // Kích hoạt chế độ Native JSON Mode của Groq để đảm bảo đầu ra luôn sạch
-      response_format: { type: "json_object" } 
+      temperature: 0.1,
+
+      response_format: { type: "json_object" }
     });
 
     const responseText = chatCompletion.choices[0]?.message?.content || '{}';
     const aiData = JSON.parse(responseText);
 
-    // 3. Trả về cấu hình sạch cho Frontend hiển thị đồng hồ
     res.status(200).json({
       success: true,
       data: aiData
@@ -98,9 +103,9 @@ export const getMarketSentiment = async (req: Request, res: Response): Promise<v
 
   } catch (error: any) {
     console.error("❌ Groq Sentiment AI Error:", error.message);
-    res.status(500).json({ 
-      success: false, 
-      message: "Hệ thống phân tích vĩ mô đang bảo trì, vui lòng thử lại sau." 
+    res.status(500).json({
+      success: false,
+      message: "Market sentiment analysis is temporarily unavailable. Please try again later."
     });
   }
 };

@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { IUser } from '../types';
 
-// Ép Mongoose phải tuân thủ interface IUser
 export interface IUserModel extends IUser, Document {}
 
 const UserSchema: Schema = new Schema(

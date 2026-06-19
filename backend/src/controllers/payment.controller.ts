@@ -4,7 +4,12 @@ import User from '../models/user.model';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2026-03-25.dahlia' });
 
-// API 1: TẠO LINK THANH TOÁN
+/**
+ * @desc    Create a Stripe Checkout session for the POMAFINA PRO monthly subscription ($15/mo).
+ *          Embeds the userId in session metadata so the webhook can upgrade the account on success.
+ * @route   POST /payment/create-checkout-session
+ * @access  Private
+ */
 export const createCheckoutSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -23,7 +28,7 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
             name: 'POMAFINA PRO Subscription',
             description: 'Unlock POMAFINA AI Oracle and Advanced Market Sentiment'
           },
-          unit_amount: 1500, // $15.00
+          unit_amount: 1500,
           recurring: { interval: 'month' },
         },
         quantity: 1,
@@ -39,15 +44,18 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
   }
 };
 
-// API 2: LẮNG NGHE WEBHOOK TỪ STRIPE
-// Yêu cầu: STRIPE_WEBHOOK_SECRET phải được set trong .env
-// Lấy webhook secret bằng lệnh: stripe listen --forward-to localhost:5000/api/payment/webhook
+/**
+ * @desc    Handle incoming Stripe webhook events. Verifies the Stripe signature,
+ *          then on `checkout.session.completed` upgrades the matching user to PRO tier.
+ * @route   POST /payment/webhook
+ * @access  Public (Stripe signature verified internally)
+ */
 export const webhook = async (req: Request, res: Response): Promise<void> => {
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
-    console.error('❌ [STRIPE] STRIPE_WEBHOOK_SECRET chưa được cấu hình trong .env');
+    console.error('❌ [STRIPE] STRIPE_WEBHOOK_SECRET is not configured in .env');
     res.status(500).json({ error: 'Webhook secret not configured on server.' });
     return;
   }
@@ -65,14 +73,18 @@ export const webhook = async (req: Request, res: Response): Promise<void> => {
     const session = event.data.object as { metadata?: { userId?: string } };
     const userId = session.metadata?.userId;
 
-    console.log(`\n✅ [WEBHOOK EVENT] Nhận được thông báo thanh toán từ Stripe!`);
-    console.log(`👉 Đang xử lý cho User ID: ${userId}`);
+    console.log(`\n✅ [WEBHOOK EVENT] Payment notification received from Stripe!`);
+    console.log(`👉 Processing for User ID: ${userId}`);
 
     if (userId) {
-      await User.findByIdAndUpdate(userId, { tier: 'PRO' });
-      console.log(`🚀 [SYSTEM] Đã nâng cấp tài khoản ${userId} lên POMAFINA PRO thành công.\n`);
+      try {
+        await User.findByIdAndUpdate(userId, { tier: 'PRO' });
+        console.log(`🚀 [SYSTEM] Account ${userId} successfully upgraded to POMAFINA PRO.\n`);
+      } catch (err) {
+        console.error(`❌ [SYSTEM] Failed to upgrade account ${userId}:`, err);
+      }
     } else {
-      console.log(`❌ [WEBHOOK ERROR] Giao dịch thành công nhưng không tìm thấy userId trong metadata!\n`);
+      console.log(`❌ [WEBHOOK ERROR] Payment succeeded but no userId found in session metadata!\n`);
     }
   }
 

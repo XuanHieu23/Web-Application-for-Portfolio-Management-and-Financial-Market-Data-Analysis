@@ -2,6 +2,12 @@ import { Request, Response } from 'express';
 import Portfolio from '../models/portfolio.model';
 import Transaction from '../models/transaction.model';
 
+/**
+ * @desc    Execute a BUY or SELL trade — upserts the holding with recalculated average price
+ *          and creates a transaction record. Returns 400 if selling more than available quantity.
+ * @route   POST /portfolio/trade
+ * @access  Private
+ */
 export const trade = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -51,7 +57,7 @@ export const trade = async (req: Request, res: Response): Promise<void> => {
     });
     await newTx.save();
 
-    if (portfolioItem) await portfolioItem.save();
+    await portfolioItem!.save();
     res.status(201).json({ success: true, message: 'Trade executed!' });
 
   } catch (error) {
@@ -59,6 +65,12 @@ export const trade = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+/**
+ * @desc    Return all holdings with quantity > 0 for the authenticated user,
+ *          formatted as { symbol, amount, avgPrice }
+ * @route   GET /portfolio/summary
+ * @access  Private
+ */
 export const getPortfolioSummary = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -68,7 +80,7 @@ export const getPortfolioSummary = async (req: Request, res: Response): Promise<
     }
 
     const portfolio = await Portfolio.find({ userId, quantity: { $gt: 0 } });
-    
+
     const formattedData = portfolio.map(item => ({
       symbol: item.coinSymbol,
       amount: item.quantity,
@@ -81,6 +93,11 @@ export const getPortfolioSummary = async (req: Request, res: Response): Promise<
   }
 };
 
+/**
+ * @desc    Return all transaction history for the authenticated user, sorted by newest first
+ * @route   GET /portfolio/transactions
+ * @access  Private
+ */
 export const getTransactions = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user?.id;

@@ -1,10 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { createChart, type Time } from 'lightweight-charts';
 import { POMAFINA_THEME } from '../../constants/theme';
-import { X } from 'lucide-react'; // Icon nút X để đóng
+import { X } from 'lucide-react';
 import { axiosClient } from '../../services/axiosClient';
 
-// Định nghĩa Props: Nhận vào tên Coin và Hàm đóng cửa sổ
 interface CandlestickChartProps {
   symbol: string;
   onClose: () => void;
@@ -17,7 +16,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ symbol, onCl
     if (!chartContainerRef.current) return;
 
     const chart = createChart(chartContainerRef.current, {
-      autoSize: true, 
+      autoSize: true,
       layout: POMAFINA_THEME.chartLayout,
       grid: POMAFINA_THEME.gridLines,
       timeScale: { timeVisible: true, secondsVisible: false },
@@ -33,11 +32,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ symbol, onCl
 
     let isMounted = true;
 
-    // LẤY DỮ LIỆU ĐÚNG ĐỒNG COIN ĐANG ĐƯỢC CHỌN
     axiosClient.get(`/market/klines?symbol=${symbol}&interval=1d&limit=100`)
   .then((res) => {
     if (!isMounted) return;
-    const resData = res.data; // axios lấy dữ liệu trong res.data
+    const resData = res.data;
     const formattedData = resData.data.map((d: any) => ({
       time: Math.floor(d[0] / 1000) as Time,
       open: parseFloat(d[1]),
@@ -46,23 +44,22 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ symbol, onCl
       close: parseFloat(d[4]),
     }));
     candlestickSeries.setData(formattedData);
-    chart.timeScale().fitContent(); 
+    chart.timeScale().fitContent();
   })
-  .catch(err => console.error('Lỗi tải dữ liệu nến:', err));
+  .catch(err => console.error('Failed to load candlestick data:', err));
 
     return () => {
       isMounted = false;
-      chart.remove(); 
+      chart.remove();
     };
-  }, [symbol]); // Render lại biểu đồ nếu user đổi symbol khác
+  }, [symbol]);
 
   return (
-    // Lớp phủ đen mờ (Backdrop)
+
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      {/* Khung chứa biểu đồ */}
+
       <div className="w-full max-w-5xl bg-[#0B0E14] border border-gray-800 rounded-2xl shadow-[0_0_50px_rgba(0,240,255,0.1)] overflow-hidden flex flex-col">
-        
-        {/* Header của Popup */}
+
         <div className="flex justify-between items-center p-4 border-b border-gray-800 bg-[#151924]">
           <div className="flex items-center gap-3">
             <h3 className="text-xl font-bold text-white tracking-widest">{symbol} <span className="text-gray-500 font-normal">/ Market Chart</span></h3>
@@ -73,7 +70,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ symbol, onCl
           </button>
         </div>
 
-        {/* Khu vực vẽ nến */}
         <div ref={chartContainerRef} className="w-full h-[500px]" />
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
+import { getSocketUrl } from '../../services/socketUrl';
 
 const TOP_COINS = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'LINK', 'DOT'];
 
@@ -12,10 +13,7 @@ export const MarketTicker: React.FC = () => {
   const [livePrices, setLivePrices] = useState<Record<string, TickerEntry>>({});
 
   useEffect(() => {
-    const baseUrl = import.meta.env.VITE_SOCKET_URL
-      || (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
-
-    const socket = io(baseUrl);
+    const socket = io(getSocketUrl());
 
     socket.on('MARKET_LIVE_DATA', (liveData: { symbol: string; price: string; priceChangePercent: string }[]) => {
       setLivePrices(prev => {
@@ -36,7 +34,6 @@ export const MarketTicker: React.FC = () => {
     return () => { socket.disconnect(); };
   }, []);
 
-  // Nhân đôi mảng để dải băng cuộn liên tục, không bị đứt
   const displayCoins = [...TOP_COINS, ...TOP_COINS];
 
   return (

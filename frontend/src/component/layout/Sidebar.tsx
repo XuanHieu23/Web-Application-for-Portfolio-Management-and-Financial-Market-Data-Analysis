@@ -30,8 +30,7 @@ export const Sidebar: React.FC = () => {
         ${isHovered ? 'w-64 shadow-[10px_0_30px_-10px_rgba(0,240,255,0.15)]' : 'w-20'}
       `}
     >
-      {/* Logo Section */}
-      <div className={`
+            <div className={`
         h-16 flex items-center border-b border-gray-800 transition-all duration-300
         ${isHovered ? 'px-6 justify-start' : 'px-0 justify-center'}
       `}>
@@ -48,8 +47,7 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Menu Links */}
-      <nav className="flex-1 py-6 flex flex-col gap-3 px-3 overflow-x-hidden">
+            <nav className="flex-1 py-6 flex flex-col gap-3 px-3 overflow-x-hidden">
         {menuItems.map((item) => {
           const active = isActive(item.href);
           return (
@@ -85,8 +83,7 @@ export const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* Settings (Bottom) */}
-      <div className="p-3 border-t border-gray-800 mt-auto">
+            <div className="p-3 border-t border-gray-800 mt-auto">
         <Link
           to="/settings"
           title={!isHovered ? 'Settings' : ''}

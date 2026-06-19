@@ -62,7 +62,6 @@ export const PortfolioAreaChart: React.FC<PortfolioAreaChartProps> = ({ data, he
       },
     });
 
-    // Đảm bảo data được sort theo time tăng dần (yêu cầu của lightweight-charts)
     const sorted = [...data].sort((a, b) => a.time - b.time);
     areaSeries.setData(sorted as { time: Time; value: number }[]);
     chart.timeScale().fitContent();
