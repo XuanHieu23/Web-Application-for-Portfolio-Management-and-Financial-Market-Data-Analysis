@@ -19,6 +19,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({ symbol, onCl
       autoSize: true,
       layout: POMAFINA_THEME.chartLayout,
       grid: POMAFINA_THEME.gridLines,
+      localization: { locale: 'en-US' },
       timeScale: { timeVisible: true, secondsVisible: false },
     });
 
