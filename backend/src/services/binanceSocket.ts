@@ -20,11 +20,14 @@ function connect(io: SocketIOServer): void {
 
       const usdtPairs = tickers.filter((t: any) => t.s.endsWith('USDT'));
 
-      const optimizedData = usdtPairs.map((t: any) => ({
-        symbol: t.s,
-        price: t.c,
-        priceChangePercent: t.P,
-      }));
+      const optimizedData = usdtPairs.map((t: any) => {
+        const close = parseFloat(t.c);
+        const open = parseFloat(t.o);
+        const priceChangePercent = open !== 0
+          ? (((close - open) / open) * 100).toFixed(2)
+          : '0';
+        return { symbol: t.s, price: t.c, priceChangePercent };
+      });
 
       io.emit('MARKET_LIVE_DATA', optimizedData);
     } catch (error) {
