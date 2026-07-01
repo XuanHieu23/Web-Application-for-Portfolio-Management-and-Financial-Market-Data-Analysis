@@ -87,19 +87,6 @@ export const Dashboard: React.FC = () => {
           if (timestamp && totalValue > 0) chartPoints.push({ time: timestamp, value: totalValue });
         }
 
-        if (chartPoints.length < 3) {
-          chartPoints.length = 0;
-          const baseTotal = summaryData.reduce(
-            (acc, h) => acc + h.amount * (priceMap[h.symbol] || h.avgPrice), 0
-          );
-          const fluctuations = [0.974, 0.981, 0.968, 0.995, 1.008, 0.992, 1.0];
-          const today = new Date();
-          for (let i = 6; i >= 0; i--) {
-            const d = new Date(today);
-            d.setDate(today.getDate() - i);
-            chartPoints.push({ time: Math.floor(d.getTime() / 1000), value: baseTotal * fluctuations[6 - i] });
-          }
-        }
         setHistoryData(chartPoints);
       } catch (error) {
         console.error('Dashboard fetch error:', error);
@@ -290,7 +277,7 @@ export const Dashboard: React.FC = () => {
                 <PortfolioAreaChart data={historyData} height={260} />
               ) : (
                 <div className="flex h-[260px] items-center justify-center text-gray-500 font-mono text-sm border border-dashed border-gray-800 rounded-xl">
-                  [ INSUFFICIENT DATA: ADD ASSETS TO RENDER CHART ]
+                  [ ADD YOUR FIRST TRANSACTION TO TRACK NET WORTH ]
                 </div>
               )}
             </div>
