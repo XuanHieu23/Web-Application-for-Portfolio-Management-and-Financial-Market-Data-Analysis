@@ -7,7 +7,7 @@
 ![WebSocket](https://img.shields.io/badge/Real--Time-Socket.io-black?style=for-the-badge&logo=socket.io)
 ![License](https://img.shields.io/badge/License-Academic-blue?style=for-the-badge)
 
-**A unified financial terminal — combining Real-time Market Data, Portfolio Tracking, Recharts Analytics, and AI-powered Market Sentiment in a single secure workspace.**
+**A unified financial terminal — combining Real-time Market Data, Portfolio Tracking, Interactive Analytics, and AI-powered Market Sentiment in a single secure workspace.**
 
 </div>
 
@@ -15,14 +15,14 @@
 
 ## Table of Contents
 
-- [Overview](#-overview)
-- [Key Features](#-key-features)
-- [Tech Stack](#-tech-stack)
-- [System Architecture](#-system-architecture)
-- [Getting Started (Local Development)](#-getting-started-local-development)
-- [Environment Variables](#-environment-variables)
-- [Subscription Tiers](#-subscription-tiers)
-- [Author](#-author)
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Tech Stack](#tech-stack)
+- [System Architecture](#system-architecture)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Subscription Tiers](#subscription-tiers)
+- [Team](#team)
 
 ---
 
@@ -38,7 +38,7 @@
 | Static charts with delayed pricing | Native **Binance WebSocket** integration for sub-second live price updates |
 | Overwhelming market news and noise | Automated **Fear & Greed Index** powered by Groq AI analyzing real-time RSS headlines |
 | Lack of personalized portfolio strategy | **AI Oracle** powered by Groq (Llama-3.1) providing instant, tailored investment insights |
-| Clunky and unresponsive UI | A sleek, Neon-themed **Dark Mode UI** with smooth ECharts & Recharts visualizations |
+| Clunky and unresponsive UI | A sleek, Neon-themed **Dark Mode UI** with smooth ECharts & Lightweight Charts visualizations |
 
 ---
 
@@ -50,9 +50,10 @@
 - **Profit/Loss (PnL) Tracking:** Auto-calculating algorithms to display absolute and percentage-based returns.
 
 ### Real-time Market Data & Analytics
-- **Live Tickers:** Direct WebSocket connection to `wss://data-stream.binance.vision/stream` for real-time price feeds, bypassing regional ISP restrictions.
-- **Advanced Visualizations (Recharts):** - Dynamic **Area Charts (7D Performance)** with built-in Graceful Fallback algorithms to ensure UI stability even during network outages.
-  - Interactive **Donut Charts** for precise Asset Allocation breakdowns.
+- **Live Tickers:** Real-time price feeds via **Socket.IO** relay from the backend — the server holds one persistent WebSocket connection to `wss://stream.binance.com:443/ws/!miniTicker@arr` and broadcasts to all clients, bypassing regional ISP restrictions.
+- **Advanced Visualizations:**
+  - Dynamic **Area Charts (7D Performance)** powered by Lightweight Charts (TradingView) for smooth, high-performance net worth tracking.
+  - Interactive **Donut Charts** for precise Asset Allocation breakdowns, powered by ECharts.
 
 ### AI Productivity & Market Intelligence
 - **AI Oracle (Groq/Llama-3.1):** Premium feature that scans the user's current holdings and delivers actionable, sub-100-word wealth management advice via high-speed LPU inference. *(PRO only)*
@@ -82,12 +83,11 @@
 | **React.js (Vite)** | Lightning-fast component-based SPA |
 | **TypeScript** | Type-safe frontend codebase |
 | **Tailwind CSS** | Utility-first styling (Custom Neon Dark Theme) |
-| **Recharts** | Responsive SVG charts (AreaChart, PieChart) |
-| **ECharts (echarts-for-react)** | Advanced charting for portfolio area visualization |
-| **Lightweight Charts** | High-performance candlestick charts for Market page |
+| **Lightweight Charts** | High-performance area chart (7D Net Worth) and candlestick charts (Market page) |
+| **ECharts (echarts-for-react)** | Donut chart for Asset Allocation visualization |
 | **Zustand** | Lightweight global state management (auth store) |
 | **react-hook-form + Zod** | Performant form handling with schema validation |
-| **Socket.io-client / Native WS** | Handling internal broadcasts and Binance live data streams |
+| **socket.io-client** | Receiving real-time market data broadcasts from the backend Socket.IO relay |
 | **Axios** | HTTP client with global interceptors for auth tokens |
 
 ---
@@ -98,9 +98,9 @@
 ┌───────────────────────────────────────────────────────────┐
 │                    PRESENTATION LAYER                     │
 │               React SPA (Localhost / Client)              │
-│         Tailwind CSS · Recharts · Native WebSocket        │
+│      Tailwind CSS · Lightweight Charts · ECharts          │
 └─────────────────────────┬─────────────────────────────────┘
-                          │  REST (HTTP) + WS
+                          │  REST (HTTP) + Socket.IO
 ┌─────────────────────────▼─────────────────────────────────┐
 │                   APPLICATION LAYER                       │
 │              Node.js + Express.js Backend                 │
@@ -112,7 +112,7 @@
 │     DATA LAYER      │   │      THIRD-PARTY SERVICES       │
 │    MongoDB Atlas    │   │  Binance API/WS (Market Data)   │
 │   (Users, Holdings, │   │  Stripe (Payments)              │
-│    Transactions)    │   │  Groq / OpenRouter (AI Models)  │
+│    Transactions)    │   │  Groq (AI Models)               │
 └─────────────────────┘   └─────────────────────────────────┘
 ```
 ---
@@ -122,8 +122,7 @@
 - Node.js >= 18.x
 - MongoDB instance (local or Atlas)
 - Stripe account (for premium billing features)
-- Groq Cloud API key (for Llama-3.1 AI Oracle)
-- OpenRouter API key (for Mistral Market Sentiment)
+- Groq Cloud API key (for Llama-3.1 AI Oracle & Market Sentiment)
 
 ### Installation
 
@@ -145,15 +144,20 @@ cd ../frontend
 npm install
 ```
 
-**4. Configure environment variables** (see below), then start both servers:
+**4. Configure environment variables** (see below), then start all three processes in separate terminals:
 
 ```bash
-# Backend
+# Terminal 1 — Backend
 cd backend && npm run dev
 
-# Frontend (new terminal)
+# Terminal 2 — Frontend
 cd frontend && npm run dev
+
+# Terminal 3 — Stripe webhook listener (required for PRO upgrade to work locally)
+stripe listen --forward-to localhost:5000/api/payment/webhook
 ```
+
+> The `stripe listen` command prints a webhook signing secret (`whsec_...`). Copy it into `STRIPE_WEBHOOK_SECRET` in `backend/.env`.
 
 The app will be available at `http://localhost:5173` (frontend) and `http://localhost:5000` (backend).
 
@@ -164,16 +168,13 @@ The app will be available at `http://localhost:5173` (frontend) and `http://loca
 ### Backend (`/backend/.env`)
 ```env
 PORT=5000
-NODE_ENV=development
 
 MONGODB_URI=mongodb://127.0.0.1:27017/financial-dashboard
 
 JWT_SECRET=your_super_secret_jwt_key
-JWT_EXPIRES_IN=7d
 
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PREMIUM_PRICE_ID=price_...
 
 GROQ_API_KEY=gsk_...
 
@@ -183,6 +184,8 @@ CLIENT_URL=http://localhost:5173
 ### Frontend (`/frontend/.env`)
 ```env
 VITE_API_BASE_URL=http://localhost:5000/api
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+VITE_BINANCE_WS_URL=wss://stream.binance.com:9443/ws
 ```
 
 ---

@@ -50,9 +50,9 @@ export const getPortfolioInsight = async (req: Request, res: Response): Promise<
 /**
  * @desc    Scrape the latest 5 headlines from CoinTelegraph RSS, then use Groq AI to return
  *          a structured JSON with a Fear & Greed index, overall status, and per-headline sentiment.
- *          Restricted to PRO tier users only.
+ *          Available to all authenticated users.
  * @route   GET /ai/sentiment
- * @access  Private (PRO only)
+ * @access  Private (all authenticated users)
  */
 export const getMarketSentiment = async (req: Request, res: Response): Promise<void> => {
   try {

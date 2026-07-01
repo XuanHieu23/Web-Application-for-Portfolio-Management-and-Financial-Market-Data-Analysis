@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownLeft, Plus, Activity, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { axiosClient } from '../services/axiosClient';
 import { getSocketUrl } from '../services/socketUrl';
 import { NotificationBanner } from '../component/ui/NotificationBanner';
 import { io } from 'socket.io-client';
+
+const tradeSchema = z.object({
+  symbol: z.string().min(1, 'Asset symbol is required'),
+  type: z.enum(['BUY', 'SELL']),
+  amount: z.string().min(1, 'Amount is required').refine(v => parseFloat(v) > 0, { message: 'Amount must be greater than 0' }),
+  price: z.string().min(1, 'Price is required').refine(v => parseFloat(v) > 0, { message: 'Price must be greater than 0' }),
+});
+
+type TradeData = z.infer<typeof tradeSchema>;
 
 interface Holding { symbol: string; amount: number; avgPrice: number; }
 
@@ -25,7 +37,14 @@ export const Portfolio: React.FC = () => {
   const [dataLoading, setDataLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [formData, setFormData] = useState({ symbol: 'BTC', type: 'BUY', amount: '', price: '' });
+
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<TradeData>({
+    resolver: zodResolver(tradeSchema),
+    defaultValues: { symbol: 'BTC', type: 'BUY' },
+  });
+
+  const watchedType = watch('type');
+  const watchedSymbol = watch('symbol');
 
   useEffect(() => {
     fetchData();
@@ -73,7 +92,7 @@ export const Portfolio: React.FC = () => {
         });
         setLivePrices(priceMap);
       }
-    } catch { /* initial price fetch is best-effort — live socket will fill in prices */ }
+    } catch {}
   };
 
   const showNotification = (message: string, type: 'success' | 'error') => {
@@ -81,18 +100,17 @@ export const Portfolio: React.FC = () => {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const handleTrade = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleTrade = async (data: TradeData) => {
     setSubmitLoading(true);
     try {
       await axiosClient.post('/portfolio/trade', {
-        coinSymbol: formData.symbol,
-        type: formData.type,
-        quantity: Number(formData.amount),
-        price: Number(formData.price),
+        coinSymbol: data.symbol,
+        type: data.type,
+        quantity: parseFloat(data.amount),
+        price: parseFloat(data.price),
       });
-      showNotification(`${formData.type} ${formData.symbol} executed successfully.`, 'success');
-      setFormData({ symbol: 'BTC', type: 'BUY', amount: '', price: '' });
+      showNotification(`${data.type} ${data.symbol} executed successfully.`, 'success');
+      reset({ symbol: 'BTC', type: 'BUY' });
       fetchData();
     } catch (error: any) {
       showNotification(error.response?.data?.message || 'Transaction failed.', 'error');
@@ -249,19 +267,19 @@ export const Portfolio: React.FC = () => {
             <Plus className="text-neon-cyan" size={18} />
             <h3 className="text-white font-bold tracking-widest text-sm uppercase">Execute Trade</h3>
           </div>
-          <form onSubmit={handleTrade} className="space-y-4 relative z-10">
+          <form onSubmit={handleSubmit(handleTrade)} className="space-y-4 relative z-10">
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, type: 'BUY' })}
-                className={`py-2.5 rounded-lg font-bold text-xs transition-all ${formData.type === 'BUY' ? 'bg-green-950/40 text-neon-green border border-neon-green/30' : 'bg-gray-900 text-gray-500 border border-gray-800 hover:border-gray-600'}`}
+                onClick={() => setValue('type', 'BUY')}
+                className={`py-2.5 rounded-lg font-bold text-xs transition-all ${watchedType === 'BUY' ? 'bg-green-950/40 text-neon-green border border-neon-green/30' : 'bg-gray-900 text-gray-500 border border-gray-800 hover:border-gray-600'}`}
               >
                 BUY
               </button>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, type: 'SELL' })}
-                className={`py-2.5 rounded-lg font-bold text-xs transition-all ${formData.type === 'SELL' ? 'bg-red-950/40 text-neon-red border border-neon-red/30' : 'bg-gray-900 text-gray-500 border border-gray-800 hover:border-gray-600'}`}
+                onClick={() => setValue('type', 'SELL')}
+                className={`py-2.5 rounded-lg font-bold text-xs transition-all ${watchedType === 'SELL' ? 'bg-red-950/40 text-neon-red border border-neon-red/30' : 'bg-gray-900 text-gray-500 border border-gray-800 hover:border-gray-600'}`}
               >
                 SELL
               </button>
@@ -269,52 +287,50 @@ export const Portfolio: React.FC = () => {
             <div>
               <label className="block text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-1.5">Asset</label>
               <input
+                {...register('symbol')}
                 list="coin-suggestions"
                 type="text"
-                value={formData.symbol}
-                onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
-                className="w-full bg-[#0B0E14] border border-gray-700 text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-neon-cyan font-mono text-sm uppercase"
+                onChange={(e) => setValue('symbol', e.target.value.toUpperCase(), { shouldValidate: true })}
+                className={`w-full bg-[#0B0E14] border text-white rounded-lg px-3 py-2.5 focus:outline-none font-mono text-sm uppercase ${errors.symbol ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
                 placeholder="BTC, ETH..."
-                required
               />
               <datalist id="coin-suggestions">
                 <option value="BTC">Bitcoin</option>
                 <option value="ETH">Ethereum</option>
               </datalist>
+              {errors.symbol && <p className="text-neon-red text-[10px] mt-1">{errors.symbol.message}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-gray-500 text-[10px] font-bold tracking-widest uppercase mb-1.5">Amount</label>
                 <input
+                  {...register('amount')}
                   type="number"
                   step="any"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full bg-[#0B0E14] border border-gray-700 text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-neon-cyan font-mono text-sm"
+                  className={`w-full bg-[#0B0E14] border text-white rounded-lg px-3 py-2.5 focus:outline-none font-mono text-sm ${errors.amount ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
                   placeholder="0.00"
-                  required
                 />
+                {errors.amount && <p className="text-neon-red text-[10px] mt-1">{errors.amount.message}</p>}
               </div>
               <div>
                 <div className="flex justify-between items-end mb-1.5">
                   <label className="block text-gray-500 text-[10px] font-bold tracking-widest uppercase">Price</label>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, price: (livePrices[formData.symbol] || 0).toString() })}
+                    onClick={() => { const lp = livePrices[watchedSymbol]; if (lp) setValue('price', String(lp), { shouldValidate: true }); }}
                     className="text-neon-cyan text-[9px] hover:underline"
                   >
                     Use Live
                   </button>
                 </div>
                 <input
+                  {...register('price')}
                   type="number"
                   step="any"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full bg-[#0B0E14] border border-gray-700 text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-neon-cyan font-mono text-sm"
+                  className={`w-full bg-[#0B0E14] border text-white rounded-lg px-3 py-2.5 focus:outline-none font-mono text-sm ${errors.price ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
                   placeholder="$0.00"
-                  required
                 />
+                {errors.price && <p className="text-neon-red text-[10px] mt-1">{errors.price.message}</p>}
               </div>
             </div>
             <button

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, BrainCircuit, Activity, Lock, PieChart as PieChartIcon, Layers } from 'lucide-react';
+import { io } from 'socket.io-client';
 import { axiosClient } from '../services/axiosClient';
 import { useAuthStore } from '../store/authStore';
 import { Typewriter } from '../component/ui/TypeWriter';
 import { NotificationBanner } from '../component/ui/NotificationBanner';
 import { PortfolioAreaChart, type ChartPoint } from '../component/ui/PortfolioAreaChart';
 import ReactECharts from 'echarts-for-react';
+import { getSocketUrl } from '../services/socketUrl';
 
 interface Holding { symbol: string; amount: number; avgPrice: number; }
 
@@ -117,6 +119,23 @@ export const Dashboard: React.FC = () => {
 
     fetchDashboardData();
     fetchAiInsight();
+  }, []);
+
+  useEffect(() => {
+    const socket = io(getSocketUrl());
+    socket.on('MARKET_LIVE_DATA', (liveData: { symbol: string; price: string }[]) => {
+      setLivePrices(prev => {
+        const next = { ...prev };
+        let changed = false;
+        liveData.forEach(coin => {
+          const sym = coin.symbol.replace('USDT', '');
+          const newPrice = parseFloat(coin.price);
+          if (prev[sym] !== newPrice) { next[sym] = newPrice; changed = true; }
+        });
+        return changed ? next : prev;
+      });
+    });
+    return () => { socket.disconnect(); };
   }, []);
 
   const totalInvested = holdings.reduce((acc, h) => acc + h.amount * h.avgPrice, 0);

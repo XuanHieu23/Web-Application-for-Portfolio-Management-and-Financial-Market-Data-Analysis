@@ -1,75 +1,80 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, User, Zap, AlertCircle } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { axiosClient } from '../services/axiosClient';
 import { useAuthStore } from '../store/authStore';
+
+const loginSchema = z.object({
+  email: z.string().min(1, 'Email is required').check(z.email({ error: 'Invalid email format' })),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+const registerSchema = z.object({
+  username: z.string().min(1, 'Username is required'),
+  email: z.string().min(1, 'Email is required').check(z.email({ error: 'Invalid email format' })),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+type LoginData = z.infer<typeof loginSchema>;
+type RegisterData = z.infer<typeof registerSchema>;
 
 export const Login: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(searchParams.get('mode') !== 'signup');
   const navigate = useNavigate();
   const loginAction = useAuthStore(state => state.login);
-
-  const [formData, setFormData] = useState({ username: '', email: '', password: '' });
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; general?: string }>({});
   const [loading, setLoading] = useState(false);
+  const [generalMessage, setGeneralMessage] = useState<{ text: string; isSuccess: boolean } | null>(null);
 
-  const validateForm = () => {
-    const newErrors: any = {};
-    if (!isLogin && !formData.username.trim()) newErrors.name = 'Username is required';
+  const loginForm = useForm<LoginData>({ resolver: zodResolver(loginSchema) });
+  const registerForm = useForm<RegisterData>({ resolver: zodResolver(registerSchema) });
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
+  const handleLogin = async (data: LoginData) => {
     setLoading(true);
-    setErrors({});
-
+    setGeneralMessage(null);
     try {
-      if (isLogin) {
-
-        const { data } = await axiosClient.post('/auth/login', { email: formData.email, password: formData.password });
-
-        if (data.success && data.token) {
-          loginAction(data.token, data.user);
-          navigate('/home');
-        }
-      } else {
-
-        const { data } = await axiosClient.post('/auth/signup', {
-          username: formData.username,
-          email: formData.email,
-          password: formData.password
-        });
-
-        if (data.success) {
-          setIsLogin(true);
-          setFormData({ username: '', email: formData.email, password: '' });
-          setErrors({ general: 'Registration successful! Please sign in.' });
-        }
+      const { data: res } = await axiosClient.post('/auth/login', { email: data.email, password: data.password });
+      if (res.success && res.token) {
+        loginAction(res.token, res.user);
+        navigate('/home');
       }
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Authentication failed. Please try again.';
-      setErrors({ general: message });
+      setGeneralMessage({ text: error.response?.data?.message || 'Authentication failed. Please try again.', isSuccess: false });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRegister = async (data: RegisterData) => {
+    setLoading(true);
+    setGeneralMessage(null);
+    try {
+      const { data: res } = await axiosClient.post('/auth/signup', {
+        username: data.username,
+        email: data.email,
+        password: data.password,
+      });
+      if (res.success) {
+        loginForm.setValue('email', data.email);
+        registerForm.reset();
+        setIsLogin(true);
+        setGeneralMessage({ text: 'Registration successful! Please sign in.', isSuccess: true });
+      }
+    } catch (error: any) {
+      setGeneralMessage({ text: error.response?.data?.message || 'Registration failed. Please try again.', isSuccess: false });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const switchTab = (toLogin: boolean) => {
+    setIsLogin(toLogin);
+    setGeneralMessage(null);
+    loginForm.clearErrors();
+    registerForm.clearErrors();
   };
 
   return (
@@ -86,80 +91,110 @@ export const Login: React.FC = () => {
           <p className="text-gray-500 text-sm mt-1">{isLogin ? 'Access your terminal' : 'Initialize your node'}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {errors.general && (
-            <div className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium ${errors.general.includes('successful') ? 'bg-green-950/40 border-neon-green/50 text-neon-green' : 'bg-red-950/40 border-neon-red/50 text-neon-red'}`}>
-              <AlertCircle size={16} />
-              <p>{errors.general}</p>
-            </div>
-          )}
+        {generalMessage && (
+          <div className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium mb-5 ${generalMessage.isSuccess ? 'bg-green-950/40 border-neon-green/50 text-neon-green' : 'bg-red-950/40 border-neon-red/50 text-neon-red'}`}>
+            <AlertCircle size={16} />
+            <p>{generalMessage.text}</p>
+          </div>
+        )}
 
-          {!isLogin && (
+        {isLogin ? (
+          <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-5">
+            <div>
+              <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  {...loginForm.register('email')}
+                  type="text"
+                  className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors font-mono text-sm ${loginForm.formState.errors.email ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
+                  placeholder="commander@pomafina.com"
+                />
+              </div>
+              {loginForm.formState.errors.email && <p className="text-neon-red text-xs mt-1.5 ml-1">{loginForm.formState.errors.email.message}</p>}
+            </div>
+
+            <div>
+              <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  {...loginForm.register('password')}
+                  type="password"
+                  className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors font-mono text-sm ${loginForm.formState.errors.password ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
+                  placeholder="••••••••"
+                />
+              </div>
+              {loginForm.formState.errors.password && <p className="text-neon-red text-xs mt-1.5 ml-1">{loginForm.formState.errors.password.message}</p>}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 mt-2 bg-neon-cyan text-black rounded-xl text-sm font-bold tracking-wide hover:bg-[#00d0e0] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50"
+            >
+              {loading ? 'AUTHENTICATING...' : 'CONNECT WALLET'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-5">
             <div>
               <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">UserName</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
+                  {...registerForm.register('username')}
                   type="text"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors ${errors.name ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
+                  className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors ${registerForm.formState.errors.username ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
                   placeholder="John Doe"
                 />
               </div>
-              {errors.name && <p className="text-neon-red text-xs mt-1.5 ml-1">{errors.name}</p>}
+              {registerForm.formState.errors.username && <p className="text-neon-red text-xs mt-1.5 ml-1">{registerForm.formState.errors.username.message}</p>}
             </div>
-          )}
 
-          <div>
-            <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input
-                type="text"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors font-mono text-sm ${errors.email ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
-                placeholder="commander@pomafina.com"
-              />
+            <div>
+              <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  {...registerForm.register('email')}
+                  type="text"
+                  className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors font-mono text-sm ${registerForm.formState.errors.email ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
+                  placeholder="commander@pomafina.com"
+                />
+              </div>
+              {registerForm.formState.errors.email && <p className="text-neon-red text-xs mt-1.5 ml-1">{registerForm.formState.errors.email.message}</p>}
             </div>
-            {errors.email && <p className="text-neon-red text-xs mt-1.5 ml-1">{errors.email}</p>}
-          </div>
 
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase">Password</label>
+            <div>
+              <label className="block text-gray-400 text-xs font-bold tracking-widest uppercase mb-2">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  {...registerForm.register('password')}
+                  type="password"
+                  className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors font-mono text-sm ${registerForm.formState.errors.password ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
+                  placeholder="••••••••"
+                />
+              </div>
+              {registerForm.formState.errors.password && <p className="text-neon-red text-xs mt-1.5 ml-1">{registerForm.formState.errors.password.message}</p>}
             </div>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className={`w-full bg-gray-900/50 border text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none transition-colors font-mono text-sm ${errors.password ? 'border-neon-red' : 'border-gray-700 focus:border-neon-cyan'}`}
-                placeholder="••••••••"
-              />
-            </div>
-            {errors.password && <p className="text-neon-red text-xs mt-1.5 ml-1">{errors.password}</p>}
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 mt-2 bg-neon-cyan text-black rounded-xl text-sm font-bold tracking-wide hover:bg-[#00d0e0] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50"
-          >
-            {loading ? 'AUTHENTICATING...' : (isLogin ? 'CONNECT WALLET' : 'INITIALIZE NODE')}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 mt-2 bg-neon-cyan text-black rounded-xl text-sm font-bold tracking-wide hover:bg-[#00d0e0] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50"
+            >
+              {loading ? 'AUTHENTICATING...' : 'INITIALIZE NODE'}
+            </button>
+          </form>
+        )}
 
         <div className="mt-8 text-center text-sm text-gray-500">
           {isLogin ? "Don't have an access key? " : "Already initialized? "}
           <button
             type="button"
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setErrors({});
-            }}
+            onClick={() => switchTab(!isLogin)}
             className="text-neon-cyan font-bold hover:underline"
           >
             {isLogin ? 'Request Access' : 'Sign In'}

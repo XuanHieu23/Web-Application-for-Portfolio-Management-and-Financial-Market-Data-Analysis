@@ -14,7 +14,7 @@ router.get('/insight', verifyToken, getPortfolioInsight);
 /**
  * @desc    Analyze overall crypto market sentiment from latest news via Groq AI
  * @route   GET /ai/sentiment
- * @access  Private (PRO only)
+ * @access  Private (all authenticated users)
  */
 router.get('/sentiment', verifyToken, getMarketSentiment);
 
